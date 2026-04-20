@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/product.dart';
+import '../cart/cart_screen.dart';
 import '../catalog/catalog_screen.dart';
+import '../checkout/checkout_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../home/home_screen.dart';
+import '../profile/profile_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -32,8 +35,12 @@ class _MainShellState extends State<MainShell> {
         onProductSelected: _onProductSelected,
         onRequireAuth: _onRequireAuth,
       ),
-      FavoritesScreen(
+      CartScreen(
         onProductSelected: _onProductSelected,
+        onRequireAuth: _onRequireAuth,
+        onCheckout: _onCheckout,
+      ),
+      ProfileScreen(
         onRequireAuth: _onRequireAuth,
       ),
     ];
@@ -57,6 +64,12 @@ class _MainShellState extends State<MainShell> {
     // TODO: Open chat
   }
 
+  void _onCheckout() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CheckoutScreen()),
+    );
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -78,8 +91,12 @@ class _MainShellState extends State<MainShell> {
             label: 'Catalog',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.favorite),
-            label: 'Favorites',
+            icon: Icon(Icons.shopping_cart),
+            label: 'Cart',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
         currentIndex: _selectedIndex,
