@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/providers/app_state_provider.dart';
+import '../../models/cart_entry.dart';
 import '../../models/product.dart';
 import '../../widgets/network_product_image.dart';
 import '../../widgets/section_title.dart';

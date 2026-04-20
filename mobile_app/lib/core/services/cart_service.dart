@@ -70,4 +70,11 @@ class CartService {
   Future<void> removeItem(String itemId) {
     return _client.from('cart_items').delete().eq('id', itemId);
   }
+
+  Future<void> clearCart() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+
+    await _client.from('cart_items').delete().eq('user_id', user.id);
+  }
 }

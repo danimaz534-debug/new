@@ -108,6 +108,7 @@ class AppStateProvider extends ChangeNotifier {
   bool get isWholesale => _profile?.isWholesale ?? false;
   User? get authUser => _authUser;
   AppUser? get profile => _profile;
+  AppUser? get currentUser => profile;
   ThemeMode get themeMode => _themeMode;
   String get localeCode => _localeCode;
   Locale get locale => Locale(_localeCode);
@@ -120,6 +121,7 @@ class AppStateProvider extends ChangeNotifier {
 
   List<Product> get products => List.unmodifiable(_products);
   List<CartEntry> get cartItems => List.unmodifiable(_cartItems);
+  List<CartEntry> get cartEntries => cartItems; // Alias for cartItems
   Set<String> get favoriteIds => Set.unmodifiable(_favoriteIds);
   List<OrderSummary> get orders => List.unmodifiable(_orders);
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
@@ -213,6 +215,7 @@ class AppStateProvider extends ChangeNotifier {
         cartSubtotal - estimatedWholesaleDiscount - estimatedLoyaltyDiscount,
         0,
       );
+  double get cartTotal => estimatedTotal;
 
   List<Review> reviewsForProduct(String productId) =>
       List.unmodifiable(_reviewsByProduct[productId] ?? const []);
@@ -277,6 +280,10 @@ class AppStateProvider extends ChangeNotifier {
     await _authService.signOut();
   }
 
+  Future<void> logout() async {
+    await signOut();
+  }
+
   Future<void> loadReviews(String productId) async {
     final reviews = await _reviewService.fetchReviews(productId);
     _reviewsByProduct[productId] = reviews;
@@ -315,6 +322,16 @@ class AppStateProvider extends ChangeNotifier {
     await _requireAuthenticated();
     await _cartService.removeItem(entry.id);
     await loadCart();
+  }
+
+  Future<void> updateCartQuantity(String productId, int quantity) async {
+    final entry = _cartItems.firstWhere((item) => item.product.id == productId);
+    await updateCartItemQuantity(entry, quantity);
+  }
+
+  Future<void> removeFromCart(String productId) async {
+    final entry = _cartItems.firstWhere((item) => item.product.id == productId);
+    await removeCartItem(entry);
   }
 
   Future<void> toggleFavorite(Product product) async {
@@ -515,6 +532,12 @@ class AppStateProvider extends ChangeNotifier {
       _cartLoading = false;
       _safeNotify();
     }
+  }
+
+  Future<void> clearCart() async {
+    await _requireAuthenticated();
+    await _cartService.clearCart();
+    await loadCart();
   }
 
   Future<void> loadFavorites() async {

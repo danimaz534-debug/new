@@ -185,7 +185,7 @@ class _ProductCarousel extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 356,
+      height: 380,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: products.length,

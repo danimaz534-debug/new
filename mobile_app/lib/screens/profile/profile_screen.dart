@@ -47,7 +47,7 @@ class ProfileScreen extends StatelessWidget {
                     _buildInfoRow(
                       context,
                       appState.text(en: 'Name', ar: 'الاسم'),
-                      appState.currentUser?.name ?? 'N/A',
+                      appState.currentUser?.fullName ?? 'N/A',
                     ),
                     const SizedBox(height: 8),
                     _buildInfoRow(
@@ -58,8 +58,8 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     _buildInfoRow(
                       context,
-                      appState.text(en: 'Phone', ar: 'الهاتف'),
-                      appState.currentUser?.phone ?? 'N/A',
+                      appState.text(en: 'Role', ar: 'الدور'),
+                      appState.currentUser?.shortRole ?? 'N/A',
                     ),
                   ],
                 ),
