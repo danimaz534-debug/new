@@ -67,24 +67,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               },
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: appState.text(en: 'Email', ar: 'البريد الإلكتروني'),
-                border: const OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return appState.text(en: 'Please enter your email', ar: 'يرجى إدخال بريدك الإلكتروني');
-                }
-                if (!value.contains('@')) {
-                  return appState.text(en: 'Please enter a valid email', ar: 'يرجى إدخال بريد إلكتروني صحيح');
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+
             TextFormField(
               controller: _phoneController,
               decoration: InputDecoration(

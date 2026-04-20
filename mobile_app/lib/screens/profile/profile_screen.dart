@@ -74,7 +74,11 @@ class ProfileScreen extends StatelessWidget {
                     title: Text(appState.text(en: 'My Orders', ar: 'طلباتي')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      // Navigate to orders
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(appState.text(en: 'Orders feature coming soon', ar: 'ميزة الطلبات قريبا')),
+                        ),
+                      );
                     },
                   ),
                   const Divider(),
@@ -83,7 +87,12 @@ class ProfileScreen extends StatelessWidget {
                     title: Text(appState.text(en: 'Favorites', ar: 'المفضلة')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      // Navigate to favorites
+                      // Already in navigation, perhaps do nothing or show message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(appState.text(en: 'Favorites tab available in navigation', ar: 'علامة التبويب المفضلة متوفرة في التنقل')),
+                        ),
+                      );
                     },
                   ),
                   const Divider(),
@@ -92,7 +101,11 @@ class ProfileScreen extends StatelessWidget {
                     title: Text(appState.text(en: 'Addresses', ar: 'العناوين')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      // Navigate to addresses
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(appState.text(en: 'Addresses feature coming soon', ar: 'ميزة العناوين قريبا')),
+                        ),
+                      );
                     },
                   ),
                   const Divider(),
@@ -101,7 +114,11 @@ class ProfileScreen extends StatelessWidget {
                     title: Text(appState.text(en: 'Notifications', ar: 'الإشعارات')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      // Navigate to notifications
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(appState.text(en: 'Notifications feature coming soon', ar: 'ميزة الإشعارات قريبا')),
+                        ),
+                      );
                     },
                   ),
                 ],

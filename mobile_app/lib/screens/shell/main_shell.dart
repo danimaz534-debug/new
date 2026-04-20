@@ -101,6 +101,7 @@ class _MainShellState extends State<MainShell> {
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Theme.of(context).primaryColor,
+        unselectedItemColor: Colors.grey.shade600,
         onTap: _onItemTapped,
       ),
     );
