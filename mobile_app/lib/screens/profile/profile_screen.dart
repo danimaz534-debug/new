@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/providers/app_state_provider.dart';
+import '../addresses/addresses_screen.dart';
+import '../notifications/notifications_screen.dart';
+import '../orders/orders_screen.dart';
 import '../../widgets/section_title.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -74,10 +77,8 @@ class ProfileScreen extends StatelessWidget {
                     title: Text(appState.text(en: 'My Orders', ar: 'طلباتي')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(appState.text(en: 'Orders feature coming soon', ar: 'ميزة الطلبات قريبا')),
-                        ),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const OrdersScreen()),
                       );
                     },
                   ),
@@ -101,10 +102,8 @@ class ProfileScreen extends StatelessWidget {
                     title: Text(appState.text(en: 'Addresses', ar: 'العناوين')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(appState.text(en: 'Addresses feature coming soon', ar: 'ميزة العناوين قريبا')),
-                        ),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AddressesScreen()),
                       );
                     },
                   ),
@@ -114,10 +113,8 @@ class ProfileScreen extends StatelessWidget {
                     title: Text(appState.text(en: 'Notifications', ar: 'الإشعارات')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(appState.text(en: 'Notifications feature coming soon', ar: 'ميزة الإشعارات قريبا')),
-                        ),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
                       );
                     },
                   ),
