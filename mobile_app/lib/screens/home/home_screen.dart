@@ -109,6 +109,7 @@ class HomeScreen extends StatelessWidget {
             products: appState.bestSellerProducts,
             onProductSelected: onProductSelected,
             onExploreCatalog: onExploreCatalog,
+            onRequireAuth: onRequireAuth,
           ),
           const SizedBox(height: 24),
           SectionTitle(
@@ -123,6 +124,7 @@ class HomeScreen extends StatelessWidget {
             products: appState.hotDeals.take(8).toList(),
             onProductSelected: onProductSelected,
             onExploreCatalog: onExploreCatalog,
+            onRequireAuth: onRequireAuth,
           ),
           const SizedBox(height: 24),
           SectionTitle(
@@ -137,6 +139,7 @@ class HomeScreen extends StatelessWidget {
             products: appState.featuredProducts,
             onProductSelected: onProductSelected,
             onExploreCatalog: onExploreCatalog,
+            onRequireAuth: onRequireAuth,
           ),
         ],
       ),
@@ -149,11 +152,13 @@ class _ProductCarousel extends StatelessWidget {
     required this.products,
     required this.onProductSelected,
     required this.onExploreCatalog,
+    required this.onRequireAuth,
   });
 
   final List<Product> products;
   final ValueChanged<Product> onProductSelected;
   final VoidCallback onExploreCatalog;
+  final VoidCallback onRequireAuth;
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +190,7 @@ class _ProductCarousel extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 380,
+      height: 392,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: products.length,
@@ -198,8 +203,20 @@ class _ProductCarousel extends StatelessWidget {
               product: product,
               isFavorite: appState.favoriteIds.contains(product.id),
               onTap: () => onProductSelected(product),
-              onFavoriteToggle: () {},
-              onAddToCart: () {},
+              onFavoriteToggle: () async {
+                if (appState.isGuest) {
+                  onRequireAuth();
+                  return;
+                }
+                await appState.toggleFavorite(product);
+              },
+              onAddToCart: () async {
+                if (appState.isGuest) {
+                  onRequireAuth();
+                  return;
+                }
+                await appState.addToCart(product);
+              },
             ),
           );
         },

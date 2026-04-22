@@ -7,6 +7,7 @@ create table if not exists public.profiles (
   role text not null default 'retail',
   is_blocked boolean not null default false,
   preferred_language text not null default 'en',
+  last_seen_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
 
@@ -143,18 +144,20 @@ as $$
 declare
   v_profile public.profiles;
 begin
-  insert into public.profiles (id, email, full_name, role, preferred_language)
+  insert into public.profiles (id, email, full_name, role, preferred_language, last_seen_at)
   values (
     auth.uid(),
     coalesce(auth.jwt() ->> 'email', ''),
     coalesce(p_full_name, auth.jwt() -> 'user_metadata' ->> 'full_name', auth.jwt() -> 'user_metadata' ->> 'name'),
     coalesce(p_role, 'retail'),
-    coalesce(p_language, 'en')
+    coalesce(p_language, 'en'),
+    now()
   )
   on conflict (id) do update
     set email = excluded.email,
         full_name = coalesce(excluded.full_name, public.profiles.full_name),
-        preferred_language = coalesce(excluded.preferred_language, public.profiles.preferred_language)
+        preferred_language = coalesce(excluded.preferred_language, public.profiles.preferred_language),
+        last_seen_at = now()
   returning * into v_profile;
 
   return v_profile;

@@ -41,9 +41,12 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Cyan
     Write-Host "1. Add secrets in Supabase Dashboard:" -ForegroundColor White
-    Write-Host "   - Go to: https://app.supabase.com/project/hqszihvjqscrwdzrwbyg/functions" -ForegroundColor White
+    Write-Host "   - Go to: https://supabase.com/dashboard/project/hqszihvjqscrwdzrwbyg/functions" -ForegroundColor White
     Write-Host "   - Click on 'create-user' function" -ForegroundColor White
-    Write-Host "   - Add secrets: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY" -ForegroundColor White
+    Write-Host "   - Click 'Secrets' tab" -ForegroundColor White
+    Write-Host "   - Add these secrets:" -ForegroundColor White
+    Write-Host "     * SUPABASE_SERVICE_ROLE_KEY (from Settings → API → service_role secret)" -ForegroundColor Yellow
+    Write-Host "     * SUPABASE_ANON_KEY (from Settings → API → anon public)" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "2. Test the function by signing in and creating a user" -ForegroundColor White
 } else {

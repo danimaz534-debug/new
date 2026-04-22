@@ -17,14 +17,18 @@ You MUST add these secrets in the Supabase Dashboard for the function to work:
 
 | Secret Name | Value |
 |------------|-------|
-| `SERVICE_ROLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxc3ppaHZqcXNjandkenJ3YnlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTMyMTIwOSwiZXhwIjoyMDkwODk3MjA5fQ.xxx` (get from Settings → API) |
+| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxc3ppaHZqcXNjandkenJ3YnlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTMyMTIwOSwiZXhwIjoyMDkwODk3MjA5fQ.xxx` (get from Settings → API) |
+| `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhxc3ppaHZqcXNjcndkenJ3YnlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NzA4NzksImV4cCI6MjA5MTA0Njg3OX0.Oe6Jm4dduicJRhF_cGol7lLjWD3W5nNUiJqSvbhnaII` (get from Settings → API) |
 
-**Note**: The function uses the Supabase client with the service_role_key from the `SUPABASE_SERVICE_ROLE_KEY` environment variable, but the actual URL comes from the project settings automatically.
+**Note**: The function uses two Supabase clients:
+- `supabaseAnon` with the anon key for token verification
+- `supabaseAdmin` with the service_role key for admin operations
 
-### Where to Get Service Role Key:
+### Where to Get These Keys:
 1. Supabase Dashboard → Settings → API
-2. Copy "service_role secret"
-3. Paste into the secret field
+2. Copy "anon public" key for `SUPABASE_ANON_KEY`
+3. Copy "service_role secret" for `SUPABASE_SERVICE_ROLE_KEY`
+4. Paste each into their respective secret fields
 
 ## 🧪 Testing the Function
 
@@ -58,8 +62,9 @@ And the project URL is auto-detected.
 ## ❓ Still Getting 401?
 
 The 401 error could mean:
-1. **No secrets set** → Add SERVICE_ROLE_KEY secret
+1. **Missing secrets** → Add both SUPABASE_SERVICE_ROLE_KEY and SUPABASE_ANON_KEY secrets
 2. **Session expired** → Sign out and sign back in
 3. **CORS issue** → Check browser console for CORS errors
+4. **Function not deployed** → Make sure the Edge Function is deployed with the latest code
 
 Check the logs first before reporting issues!

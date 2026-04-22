@@ -36,7 +36,7 @@ export default function ProductsPage() {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
       
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('product-images')
         .upload(fileName, file);
 

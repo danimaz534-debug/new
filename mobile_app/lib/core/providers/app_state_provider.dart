@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,14 +12,19 @@ import '../../models/cart_entry.dart';
 import '../../models/chat_models.dart';
 import '../../models/order_summary.dart';
 import '../../models/product.dart';
+import '../../models/product_comment.dart';
+import '../../models/product_rating.dart';
 import '../../models/review.dart';
 import '../../models/shipping_address.dart';
+import '../../models/user_address.dart';
+import '../services/address_service.dart';
 import '../services/auth_service.dart';
 import '../services/cart_service.dart';
 import '../services/catalog_service.dart';
 import '../services/chat_service.dart';
 import '../services/favorites_service.dart';
 import '../services/history_service.dart';
+import '../services/notification_handler.dart';
 import '../services/notifications_service.dart';
 import '../services/order_service.dart';
 import '../services/profile_service.dart';
@@ -42,6 +48,7 @@ class AppStateProvider extends ChangeNotifier {
     ChatService? chatService,
     ReviewService? reviewService,
     HistoryService? historyService,
+    AddressService? addressService,
   })  : _authService = authService ?? AuthService(),
         _profileService = profileService ?? ProfileService(),
         _catalogService = catalogService ?? CatalogService(),
@@ -51,7 +58,8 @@ class AppStateProvider extends ChangeNotifier {
         _notificationsService = notificationsService ?? NotificationsService(),
         _chatService = chatService ?? ChatService(),
         _reviewService = reviewService ?? ReviewService(),
-        _historyService = historyService ?? HistoryService();
+        _historyService = historyService ?? HistoryService(),
+        _addressService = addressService ?? AddressService();
 
   final AuthService _authService;
   final ProfileService _profileService;
@@ -63,6 +71,7 @@ class AppStateProvider extends ChangeNotifier {
   final ChatService _chatService;
   final ReviewService _reviewService;
   final HistoryService _historyService;
+  final AddressService _addressService;
 
   SharedPreferences? _prefs;
   StreamSubscription<AuthState>? _authSubscription;
@@ -88,6 +97,10 @@ class AppStateProvider extends ChangeNotifier {
   ChatThread? _chatThread;
   List<ChatMessage> _chatMessages = [];
   final Map<String, List<Review>> _reviewsByProduct = {};
+  final Map<String, List<ProductComment>> _commentsByProduct = {};
+  final Map<String, ProductRating?> _ratingsByProduct = {};
+  List<UserAddress> _userAddresses = [];
+  UserAddress? _defaultAddress;
 
   ThemeMode _themeMode = ThemeMode.light;
   String _localeCode = 'en';
@@ -128,6 +141,8 @@ class AppStateProvider extends ChangeNotifier {
   List<Product> get watchHistory => List.unmodifiable(_watchHistory);
   ChatThread? get chatThread => _chatThread;
   List<ChatMessage> get chatMessages => List.unmodifiable(_chatMessages);
+  List<UserAddress> get userAddresses => List.unmodifiable(_userAddresses);
+  UserAddress? get defaultAddress => _defaultAddress;
 
   List<String> get availableBrands => [
         'All',
@@ -240,8 +255,43 @@ class AppStateProvider extends ChangeNotifier {
     await _loadCatalog();
     await _handleAuthState(_authUser, reloadCatalog: false);
 
+    // Handle pending notifications from when app was closed
+    _processPendingNotifications();
+
     _initialized = true;
     _safeNotify();
+  }
+
+  void _processPendingNotifications() {
+    if (kIsWeb || _authUser == null) return;
+    
+    try {
+      final handler = NotificationHandler();
+      
+      // Set up listener for real-time notifications
+      handler.addListener((notification) {
+        final appNotif = AppNotification(
+          id: notification['id']?.toString() ?? 'unknown',
+          title: notification['title']?.toString() ?? '',
+          body: notification['body']?.toString() ?? '',
+          type: notification['type']?.toString() ?? '',
+          isRead: notification['is_read'] == true,
+          createdAt: notification['created_at'] != null
+              ? DateTime.tryParse(notification['created_at'].toString())
+              : DateTime.now(),
+        );
+        
+        _notifications.insert(0, appNotif);
+        _safeNotify();
+      });
+      
+      // Fetch pending notifications from database
+      handler.fetchPendingNotifications();
+      
+      debugPrint('Notification handler initialized');
+    } catch (e) {
+      debugPrint('Error processing pending notifications: $e');
+    }
   }
 
   Future<void> signIn({
@@ -649,6 +699,148 @@ class AppStateProvider extends ChangeNotifier {
       role: _profile?.role == 'wholesale' ? 'wholesale' : 'retail',
       language: _localeCode,
     );
+  }
+
+  Future<void> loadUserAddresses() async {
+    try {
+      await _requireAuthenticated();
+      _userAddresses = await _addressService.fetchUserAddresses();
+      _defaultAddress = await _addressService.getDefaultAddress();
+      _safeNotify();
+    } catch (e) {
+      debugPrint('Error loading addresses: $e');
+    }
+  }
+
+  Future<UserAddress> createAddress(UserAddress address) async {
+    try {
+      await _requireAuthenticated();
+      final newAddress = await _addressService.createAddress(address);
+      _userAddresses.add(newAddress);
+      if (newAddress.isDefault) {
+        _defaultAddress = newAddress;
+      }
+      _safeNotify();
+      return newAddress;
+    } catch (e) {
+      debugPrint('Error creating address: $e');
+      rethrow;
+    }
+  }
+
+  Future<UserAddress> updateAddress(UserAddress address) async {
+    try {
+      await _requireAuthenticated();
+      final updated = await _addressService.updateAddress(address);
+      final index = _userAddresses.indexWhere((a) => a.id == address.id);
+      if (index >= 0) {
+        _userAddresses[index] = updated;
+      }
+      if (updated.isDefault) {
+        _defaultAddress = updated;
+      }
+      _safeNotify();
+      return updated;
+    } catch (e) {
+      debugPrint('Error updating address: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteAddress(String addressId) async {
+    try {
+      await _requireAuthenticated();
+      await _addressService.deleteAddress(addressId);
+      _userAddresses.removeWhere((a) => a.id == addressId);
+      if (_defaultAddress?.id == addressId) {
+        _defaultAddress = null;
+      }
+      _safeNotify();
+    } catch (e) {
+      debugPrint('Error deleting address: $e');
+      rethrow;
+    }
+  }
+
+  List<ProductComment> getProductComments(String productId) {
+    return List.unmodifiable(_commentsByProduct[productId] ?? []);
+  }
+
+  ProductRating? getProductRating(String productId) {
+    return _ratingsByProduct[productId];
+  }
+
+  Future<void> loadProductComments(String productId) async {
+    try {
+      final comments = await _reviewService.fetchProductComments(productId);
+      _commentsByProduct[productId] = comments;
+      _safeNotify();
+    } catch (e) {
+      debugPrint('Error loading comments: $e');
+    }
+  }
+
+  Future<void> loadProductRating(String productId) async {
+    try {
+      final rating = await _reviewService.fetchProductRating(productId);
+      _ratingsByProduct[productId] = rating;
+      _safeNotify();
+    } catch (e) {
+      debugPrint('Error loading rating: $e');
+    }
+  }
+
+  Future<ProductComment> submitProductComment({
+    required String productId,
+    required int rating,
+    required String title,
+    required String comment,
+  }) async {
+    try {
+      await _requireAuthenticated();
+      final newComment = await _reviewService.submitComment(
+        productId: productId,
+        rating: rating,
+        title: title,
+        comment: comment,
+      );
+      
+      if (!_commentsByProduct.containsKey(productId)) {
+        _commentsByProduct[productId] = [];
+      }
+      _commentsByProduct[productId]!.insert(0, newComment);
+      
+      // Reload rating to reflect the new comment
+      await loadProductRating(productId);
+      _safeNotify();
+      return newComment;
+    } catch (e) {
+      debugPrint('Error submitting comment: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      final index = _notifications.indexWhere((n) => n.id == notificationId);
+      if (index >= 0) {
+        _notifications[index] = _notifications[index].copyWith(isRead: true);
+        _safeNotify();
+      }
+    } catch (e) {
+      debugPrint('Error marking notification as read: $e');
+    }
+  }
+
+  Future<void> markAllNotificationsAsRead() async {
+    try {
+      for (int i = 0; i < _notifications.length; i++) {
+        _notifications[i] = _notifications[i].copyWith(isRead: true);
+      }
+      _safeNotify();
+    } catch (e) {
+      debugPrint('Error marking all notifications as read: $e');
+    }
   }
 
   Future<void> _requireAuthenticated() async {

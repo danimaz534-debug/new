@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { ensureProfile, fetchCurrentProfile } from "../lib/commerce";
+import { ensureProfile, fetchCurrentProfile, touchStaffPresence } from "../lib/commerce";
 import { supabase } from "../lib/supabase";
 import { isStaffRole } from "../lib/roles";
 
@@ -13,8 +13,10 @@ const useAuthStore = create((set, get) => ({
   async checkSession() {
     if (get().isChecking) return;
 
+    console.log("[checkSession] Starting session check");
     try {
       if (!supabase) {
+        console.error("[checkSession] Supabase is not configured");
         set({
           user: null,
           role: "guest",
@@ -31,12 +33,20 @@ const useAuthStore = create((set, get) => ({
         error,
       } = await supabase.auth.getSession();
 
+      console.log("[checkSession] Session retrieved:", {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userId: session?.user?.id,
+      });
+
       if (error) {
+        console.error("[checkSession] Error getting session:", error);
         set({ isLoading: false, isChecking: false, error: error.message });
         return;
       }
 
       if (!session?.user) {
+        console.log("[checkSession] No session found, setting user to guest");
         set({
           user: null,
           role: "guest",
@@ -68,6 +78,10 @@ const useAuthStore = create((set, get) => ({
         : !isStaffRole(profile?.role)
           ? "This web dashboard is restricted to admin, sales, and marketing accounts."
           : "";
+
+      if (profile && isStaffRole(profile.role) && !profile.is_blocked) {
+        touchStaffPresence(true).catch(() => {});
+      }
 
       set({
         user: {
@@ -130,6 +144,9 @@ const useAuthStore = create((set, get) => ({
 }));
 
 if (supabase) {
+  // Check session on initial load
+  useAuthStore.getState().checkSession().catch(() => {});
+
   supabase.auth.onAuthStateChange((event) => {
     // Avoid re-running session check on sign out to prevent flashes/delays
     if (["SIGNED_IN", "USER_UPDATED", "TOKEN_REFRESHED"].includes(event)) {

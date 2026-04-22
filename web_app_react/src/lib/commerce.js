@@ -29,8 +29,28 @@ function monthLabel(dateValue) {
 function activityStatus(timestamp) {
   if (!timestamp) return "Offline";
   const minutes = (Date.now() - new Date(timestamp).getTime()) / 60000;
-  return minutes <= 30 ? "Active" : "Offline";
+  return minutes <= 10 ? "Active" : "Offline";
 }
+
+function activityLabel(timestamp) {
+  if (!timestamp) return "No recent activity";
+
+  const minutes = Math.max(
+    0,
+    Math.round((Date.now() - new Date(timestamp).getTime()) / 60000),
+  );
+
+  if (minutes < 1) return "Seen just now";
+  if (minutes < 60) return `Seen ${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes === 0
+    ? `Seen ${hours}h ago`
+    : `Seen ${hours}h ${remainingMinutes}m ago`;
+}
+
+let lastPresenceTouchAt = 0;
 
 // Utility: Deduplicate concurrent requests
 async function dedupedRequest(key, requestFn, duration = CACHE_DURATION) {
@@ -113,11 +133,12 @@ export async function ensureProfile(role = "retail", existingUser = null) {
       user.user_metadata?.full_name ?? user.user_metadata?.name ?? "Staff user",
     role: normalizedRole,
     preferred_language: "en",
+    last_seen_at: new Date().toISOString(),
   };
 
   const existingProfile = await client
     .from("profiles")
-    .select("id, email, full_name, role, is_blocked, preferred_language")
+    .select("id, email, full_name, role, is_blocked, preferred_language, last_seen_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -132,9 +153,10 @@ export async function ensureProfile(role = "retail", existingUser = null) {
         email: profilePayload.email,
         full_name: existingProfile.data.full_name ?? profilePayload.full_name,
         preferred_language: existingProfile.data.preferred_language ?? "en",
+        last_seen_at: profilePayload.last_seen_at,
       })
       .eq("id", user.id)
-      .select("id, email, full_name, role, is_blocked, preferred_language")
+      .select("id, email, full_name, role, is_blocked, preferred_language, last_seen_at")
       .single();
     if (updateError) throw updateError;
     return data;
@@ -143,7 +165,7 @@ export async function ensureProfile(role = "retail", existingUser = null) {
   const { data, error: insertError } = await client
     .from("profiles")
     .insert(profilePayload)
-    .select("id, email, full_name, role, is_blocked, preferred_language")
+    .select("id, email, full_name, role, is_blocked, preferred_language, last_seen_at")
     .single();
   if (insertError) throw insertError;
   return data;
@@ -163,11 +185,35 @@ export async function fetchCurrentProfile(existingUser = null) {
 
   const { data, error } = await client
     .from("profiles")
-    .select("id, email, full_name, role, is_blocked, preferred_language")
+    .select("id, email, full_name, role, is_blocked, preferred_language, last_seen_at")
     .eq("id", user.id)
     .maybeSingle();
   if (error) throw error;
   return data;
+}
+
+export async function touchStaffPresence(force = false) {
+  const now = Date.now();
+  if (!force && now - lastPresenceTouchAt < 60000) {
+    return;
+  }
+
+  const client = requireClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await client.auth.getUser();
+
+  if (authError) throw authError;
+  if (!user) return;
+
+  const { error } = await client
+    .from("profiles")
+    .update({ last_seen_at: new Date(now).toISOString() })
+    .eq("id", user.id);
+
+  if (error) throw error;
+  lastPresenceTouchAt = now;
 }
 
 // OPTIMIZED: Fetch dashboard data with retry logic and smaller chunks
@@ -176,7 +222,12 @@ export async function fetchDashboardData() {
     const client = requireClient();
 
     // Split into smaller, more focused queries
-    const [ordersRes, productsRes, profilesRes] = await Promise.all([
+    const [
+      ordersRes,
+      productsRes,
+      profilesRes,
+      currentUserRes,
+    ] = await Promise.all([
       client
         .from("orders")
         .select("id, total_amount, status, created_at, user_id")
@@ -190,8 +241,9 @@ export async function fetchDashboardData() {
         .limit(1000),
       client
         .from("profiles")
-        .select("id, email, full_name, role, created_at")
+        .select("id, email, full_name, role, created_at, last_seen_at")
         .limit(1000),
+      client.auth.getUser(),
     ]);
 
     // Fetch order items separately with limit
@@ -230,6 +282,7 @@ export async function fetchDashboardData() {
     const orders = ordersRes.data ?? [];
     const products = productsRes.data ?? [];
     const profiles = profilesRes.data ?? [];
+    const currentUserId = currentUserRes.data?.user?.id ?? null;
 
     const today = new Date();
     const months = Array.from({ length: 6 }).map((_, index) => {
@@ -306,8 +359,14 @@ export async function fetchDashboardData() {
         name: profile.full_name ?? profile.email,
         email: profile.email,
         role: ROLE_LABELS[profile.role] ?? profile.role,
-        status: activityStatus(profile.created_at),
-        screenTime: "4h 23m",
+        status:
+          profile.id === currentUserId
+            ? "Active"
+            : activityStatus(profile.last_seen_at ?? profile.created_at),
+        screenTime:
+          profile.id === currentUserId
+            ? "Live now"
+            : activityLabel(profile.last_seen_at ?? profile.created_at),
       }));
 
     return {
@@ -481,7 +540,7 @@ export async function fetchChatThreads() {
     const client = requireClient();
     const { data, error } = await client
       .from("chat_threads")
-      .select("*, user_id:profiles(full_name, email)")
+      .select("*, profiles:user_id(full_name, email)")
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw error;
@@ -599,59 +658,67 @@ export async function updateCurrentProfile(patch) {
 export async function createUser(email, password, fullName, role) {
   const client = requireClient();
 
-  // Get the current session with retry
-  let session = null;
-  let attempts = 0;
-  const maxAttempts = 3;
+  console.log("[createUser] Starting user creation process");
 
-  while (attempts < maxAttempts && !session) {
-    const { data: sessionData, error: sessionError } =
-      await client.auth.getSession();
-    if (sessionError) {
-      console.error("Session error:", sessionError);
-    }
-    if (sessionData?.session?.access_token) {
-      session = sessionData.session;
-      break;
-    }
-    attempts++;
-    if (attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
+  // Validate input
+  if (!email || !password || !role) {
+    throw new Error("Email, password, and role are required");
   }
 
-  if (!session?.access_token) {
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new Error("Invalid email format");
+  }
+
+  // Validate password length
+  if (password.length < 6) {
+    throw new Error("Password must be at least 6 characters");
+  }
+
+  // Check if current user is admin
+  const { data: { user }, error: userError } = await client.auth.getUser();
+  if (userError || !user) {
+    console.error("[createUser] Failed to get current user:", userError);
     throw new Error("Not authenticated. Please sign in again.");
   }
 
-  const supabaseUrl = client.supabaseUrl || import.meta.env.VITE_SUPABASE_URL;
-  const functionUrl = `${supabaseUrl}/functions/v1/create-user`;
+  // Get current user's profile to verify admin role
+  const { data: currentProfile, error: profileError } = await client
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
 
-  console.log("Creating user with session token...");
+  if (profileError) {
+    console.error("[createUser] Failed to get current user profile:", profileError);
+    throw new Error("Failed to verify admin status");
+  }
 
-  const response = await fetch(functionUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": "application/json",
-      apikey: client.supabaseKey || import.meta.env.VITE_SUPABASE_ANON_KEY,
+  if (currentProfile.role !== "admin") {
+    throw new Error("Insufficient permissions - admin role required");
+  }
+
+  console.log("[createUser] Creating user via Edge Function");
+
+  // Call the Edge Function to create the user
+  // This uses the service role key and won't automatically sign in the new user
+  const { data, error } = await client.functions.invoke('create-user', {
+    body: {
+      email: email.trim(),
+      password: password,
+      full_name: fullName?.trim() ?? "",
+      role: role,
     },
-    body: JSON.stringify({ email, password, full_name: fullName, role }),
   });
 
-  let result;
-  try {
-    result = await response.json();
-  } catch {
-    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+  if (error) {
+    console.error("[createUser] Edge Function error:", error);
+    throw new Error(error.message || "Failed to create user");
   }
 
-  if (!response.ok) {
-    throw new Error(
-      result.error || `Failed to create user: ${response.status}`,
-    );
-  }
-  return result;
+  console.log("[createUser] User created successfully:", data);
+  return data;
 }
 
 export function subscribeToTables(channelName, tables, onChange) {

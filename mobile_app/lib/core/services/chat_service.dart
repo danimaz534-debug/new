@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/chat_models.dart';
@@ -11,8 +12,37 @@ class ChatService {
     final user = _client.auth.currentUser;
     if (user == null) return null;
 
-    final result = await _client.rpc('ensure_chat_thread');
-    return ChatThread.fromMap(Map<String, dynamic>.from(result as Map));
+    try {
+      final result = await _client.rpc('ensure_chat_thread');
+      return ChatThread.fromMap(Map<String, dynamic>.from(result as Map));
+    } catch (e) {
+      // Fallback: create thread directly if RPC doesn't exist
+      try {
+        final existing = await _client
+            .from('chat_threads')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (existing != null) {
+          return ChatThread.fromMap(Map<String, dynamic>.from(existing as Map));
+        }
+
+        // Create new thread
+        final response = await _client
+            .from('chat_threads')
+            .insert({
+              'user_id': user.id,
+            })
+            .select()
+            .single();
+
+        return ChatThread.fromMap(Map<String, dynamic>.from(response as Map));
+      } catch (fallbackError) {
+        debugPrint('Error ensuring chat thread: $fallbackError');
+        return null;
+      }
+    }
   }
 
   Future<List<ChatMessage>> fetchMessages(String threadId) async {

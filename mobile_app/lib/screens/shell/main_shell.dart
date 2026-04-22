@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/providers/app_state_provider.dart';
 import '../../models/product.dart';
+import '../auth/auth_screen.dart';
 import '../cart/cart_screen.dart';
 import '../catalog/catalog_screen.dart';
+import '../chat/user_chat_screen.dart';
 import '../checkout/checkout_screen.dart';
-import '../favorites/favorites_screen.dart';
 import '../home/home_screen.dart';
+import '../product/product_detail_screen.dart';
 import '../profile/profile_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -28,26 +31,43 @@ class _MainShellState extends State<MainShell> {
       HomeScreen(
         onProductSelected: _onProductSelected,
         onExploreCatalog: _onExploreCatalog,
-        onRequireAuth: _onRequireAuth,
+        onRequireAuth: () {
+          _onRequireAuth();
+        },
         onOpenChat: _onOpenChat,
       ),
       CatalogScreen(
         onProductSelected: _onProductSelected,
-        onRequireAuth: _onRequireAuth,
+        onRequireAuth: () {
+          _onRequireAuth();
+        },
       ),
       CartScreen(
         onProductSelected: _onProductSelected,
-        onRequireAuth: _onRequireAuth,
+        onRequireAuth: () {
+          _onRequireAuth();
+        },
         onCheckout: _onCheckout,
       ),
       ProfileScreen(
-        onRequireAuth: _onRequireAuth,
+        onRequireAuth: () {
+          _onRequireAuth();
+        },
       ),
     ];
   }
 
   void _onProductSelected(Product product) {
-    // TODO: Navigate to product detail
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProductDetailScreen(
+          product: product,
+          onRequireAuth: () {
+            _onRequireAuth();
+          },
+        ),
+      ),
+    );
   }
 
   void _onExploreCatalog() {
@@ -56,12 +76,26 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
-  void _onRequireAuth() {
-    // TODO: Show auth required dialog
+  Future<void> _onRequireAuth() async {
+    final appState = context.read<AppStateProvider>();
+    if (appState.isAuthenticated) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const FractionallySizedBox(
+        heightFactor: 0.95,
+        child: AuthScreen(),
+      ),
+    );
   }
 
   void _onOpenChat() {
-    // TODO: Open chat
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const UserChatScreen()),
+    );
   }
 
   void _onCheckout() {

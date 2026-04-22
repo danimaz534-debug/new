@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/providers/app_state_provider.dart';
 import '../../models/product.dart';
+import '../../widgets/feedback.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/section_title.dart';
 
@@ -84,8 +85,24 @@ class FavoritesScreen extends StatelessWidget {
                 product: product,
                 isFavorite: true,
                 onTap: () => onProductSelected(product),
-                onFavoriteToggle: () {},
-                onAddToCart: () {},
+                onFavoriteToggle: () async {
+                  try {
+                    await appState.toggleFavorite(product);
+                  } catch (error) {
+                    if (!context.mounted) return;
+                    showAppSnackBar(context, error.toString(), isError: true);
+                  }
+                },
+                onAddToCart: () async {
+                  try {
+                    await appState.addToCart(product);
+                    if (!context.mounted) return;
+                    showAppSnackBar(context, 'Added to cart.');
+                  } catch (error) {
+                    if (!context.mounted) return;
+                    showAppSnackBar(context, error.toString(), isError: true);
+                  }
+                },
               ),
             ),
           ),

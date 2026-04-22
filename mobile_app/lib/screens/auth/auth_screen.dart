@@ -222,7 +222,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                             await appState.signInWithGoogle();
                                           } catch (error) {
                                             if (!mounted) return;
-                                            showAppSnackBar(context, error.toString(), isError: true);
+                                            if (context.mounted) {
+                                              showAppSnackBar(context, error.toString(), isError: true);
+                                            }
                                           }
                                         },
                                   icon: const Icon(Icons.g_mobiledata_rounded),
@@ -239,7 +241,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                             await appState.signInWithGitHub();
                                           } catch (error) {
                                             if (!mounted) return;
-                                            showAppSnackBar(context, error.toString(), isError: true);
+                                            if (context.mounted) {
+                                              showAppSnackBar(context, error.toString(), isError: true);
+                                            }
                                           }
                                         },
                                   icon: const Icon(Icons.code_rounded),

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import 'core/providers/app_state_provider.dart';
 import 'core/theme/app_theme.dart';
-import 'screens/auth/auth_screen.dart';
 import 'screens/shell/main_shell.dart';
 
 class VoltCartBootstrap extends StatelessWidget {
@@ -30,12 +29,8 @@ class VoltCartApp extends StatelessWidget {
           title: 'VoltCart',
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
-          themeMode: ThemeMode.system,
-          home: appState.isInitialized
-              ? (appState.isAuthenticated
-                    ? const MainShell()
-                    : const AuthScreen())
-              : const _SplashScreen(),
+          themeMode: appState.themeMode,
+          home: appState.isInitialized ? const MainShell() : const _SplashScreen(),
         );
       },
     );

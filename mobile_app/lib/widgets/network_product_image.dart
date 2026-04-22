@@ -23,8 +23,10 @@ class NetworkProductImage extends StatelessWidget {
             imageUrl: imageUrl!,
             height: height,
             fit: fit,
-            placeholder: (context, _) => _fallback(),
-            errorWidget: (context, _, __) => _fallback(),
+            placeholder: (context, url) => _fallback(),
+            errorWidget: (context, url, error) => _fallback(),
+            fadeInDuration: const Duration(milliseconds: 300),
+            fadeOutDuration: const Duration(milliseconds: 300),
           );
 
     return ClipRRect(

@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/providers/app_state_provider.dart';
-import '../../widgets/section_title.dart';
 
 class OrdersScreen extends StatelessWidget {
   const OrdersScreen({super.key});
@@ -89,7 +88,10 @@ class OrdersScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      appState.text(en: 'Total: \$${order.total.toStringAsFixed(2)}', ar: 'المجموع: \$${order.total.toStringAsFixed(2)}'),
+                      appState.text(
+                        en: 'Total: \$${order.totalAmount.toStringAsFixed(2)}',
+                        ar: 'المجموع: \$${order.totalAmount.toStringAsFixed(2)}',
+                      ),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -106,11 +108,11 @@ class OrdersScreen extends StatelessWidget {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'pending':
+      case 'preparing':
         return Colors.orange;
-      case 'processing':
-        return Colors.blue;
       case 'shipped':
+        return Colors.blue;
+      case 'on the way':
         return Colors.purple;
       case 'delivered':
         return Colors.green;

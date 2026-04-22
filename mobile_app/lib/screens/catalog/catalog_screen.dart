@@ -109,7 +109,7 @@ class CatalogScreen extends StatelessWidget {
                     onChanged: (value) => appState.setPriceCap(value),
                   ),
                   DropdownButtonFormField<CatalogSort>(
-                    value: appState.sort,
+                    initialValue: appState.sort,
                     decoration: InputDecoration(
                       labelText: appState.text(en: 'Sort by', ar: 'ترتيب حسب'),
                     ),
@@ -168,7 +168,7 @@ class CatalogScreen extends StatelessWidget {
                   crossAxisCount: crossAxisCount,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  mainAxisExtent: 345,
+                  mainAxisExtent: 372,
                 ),
                 itemCount: products.length,
                 itemBuilder: (context, index) {
@@ -177,8 +177,20 @@ class CatalogScreen extends StatelessWidget {
                     product: product,
                     isFavorite: appState.favoriteIds.contains(product.id),
                     onTap: () => onProductSelected(product),
-                    onFavoriteToggle: () {},
-                    onAddToCart: () {},
+                    onFavoriteToggle: () async {
+                      if (appState.isGuest) {
+                        onRequireAuth();
+                        return;
+                      }
+                      await appState.toggleFavorite(product);
+                    },
+                    onAddToCart: () async {
+                      if (appState.isGuest) {
+                        onRequireAuth();
+                        return;
+                      }
+                      await appState.addToCart(product);
+                    },
                   );
                 },
               );

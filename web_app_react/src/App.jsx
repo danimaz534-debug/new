@@ -11,11 +11,12 @@ import UsersPage from './pages/Users';
 import AnalyticsPage from './pages/Analytics';
 import RolesPage from './pages/Roles';
 import SettingsPage from './pages/Settings';
-import { canAccess } from './lib/roles';
+import { touchStaffPresence } from './lib/commerce';
+import { canAccess, isStaffRole } from './lib/roles';
 import useAuthStore from './store/useAuthStore';
 
 function ProtectedRoute({ children, roles }) {
-  const { user, role, isLoading, error } = useAuthStore();
+  const { user, role, isLoading, error, profile } = useAuthStore();
 
   if (isLoading) {
     return <div className="fullscreen-state">Loading dashboard...</div>;
@@ -23,6 +24,16 @@ function ProtectedRoute({ children, roles }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Check if user is blocked
+  if (profile?.is_blocked) {
+    return (
+      <div className="fullscreen-state restricted-state">
+        <strong>Account Suspended</strong>
+        <p>This account has been suspended. Please contact an administrator.</p>
+      </div>
+    );
   }
 
   if (error && !canAccess(role, roles)) {
@@ -38,11 +49,43 @@ function ProtectedRoute({ children, roles }) {
 }
 
 export default function App() {
-  const { checkSession } = useAuthStore();
+  const { checkSession, user, role } = useAuthStore();
 
   useEffect(() => {
     checkSession().catch(() => {});
   }, [checkSession]);
+
+  useEffect(() => {
+    if (!user?.id || !isStaffRole(role)) {
+      return undefined;
+    }
+
+    const markPresent = (force = false) => {
+      touchStaffPresence(force).catch(() => {});
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        markPresent(true);
+      }
+    };
+
+    markPresent(true);
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        markPresent();
+      }
+    }, 60000);
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+    };
+  }, [role, user?.id]);
 
   return (
     <BrowserRouter>

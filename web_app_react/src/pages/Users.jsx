@@ -131,6 +131,13 @@ export default function UsersPage() {
         tone: "danger",
         message: error.message || "Failed to create user",
       });
+
+      // If session expired, redirect to login page
+      if (error.message?.includes("Session expired") || error.message?.includes("sign in again")) {
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
+      }
     } finally {
       setIsCreating(false);
     }

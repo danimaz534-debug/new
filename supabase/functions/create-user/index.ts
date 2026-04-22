@@ -11,18 +11,31 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Create Supabase client with service role key for admin operations
-    const supabase = createClient(
+    // Log environment variables for debugging
+    console.log('SUPABASE_URL:', Deno.env.get('SUPABASE_URL'))
+    console.log('SUPABASE_ANON_KEY:', Deno.env.get('SUPABASE_ANON_KEY') ? 'exists' : 'missing')
+    console.log('ANON_KEY:', Deno.env.get('ANON_KEY') ? 'exists' : 'missing')
+    console.log('SUPABASE_SERVICE_ROLE_KEY:', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? 'exists' : 'missing')
+    console.log('SERVICE_ROLE_KEY:', Deno.env.get('SERVICE_ROLE_KEY') ? 'exists' : 'missing')
+
+    // Create Supabase client with anon key for token verification
+    const supabaseAnon = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('ANON_KEY') ?? ''
     )
 
-    const { email, password, full_name, role } = await req.json()
+    // Create Supabase client with service role key for admin operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { email, password, full_name, role, user_id } = await req.json()
 
     // Validate required fields
-    if (!email || !password || !role) {
+    if (!email || !password || !role || !user_id) {
       return new Response(
-        JSON.stringify({ error: 'Email, password, and role are required' }),
+        JSON.stringify({ error: 'Email, password, role, and user_id are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -46,42 +59,58 @@ Deno.serve(async (req) => {
 
     // Check if current user is admin
     const authHeader = req.headers.get('Authorization')
+    console.log('Auth header:', authHeader ? 'exists' : 'missing')
+
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - no authorization header' }),
+        JSON.stringify({ error: 'Unauthorized - no authorization header. Please sign in again.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     const token = authHeader.replace('Bearer ', '').trim()
+    console.log('Token:', token ? token.substring(0, 20) + '...' : 'empty')
     
     if (!token) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - empty token' }),
+        JSON.stringify({ error: 'Unauthorized - empty token. Please sign in again.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Verify the requesting user's token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    // Verify the requesting user's token using admin client
+    // This handles both ES256 and RS256 JWT algorithms
+    let user;
+    try {
+      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
 
-    if (userError) {
-      console.error('Token verification error:', userError)
+      if (userError) {
+        console.error('Token verification error with admin client:', userError)
+        console.error('Token was:', token.substring(0, 20) + '...')
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token. Please sign in again.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      user = userData.user
+    } catch (error) {
+      console.error('Unexpected error during token verification:', error)
       return new Response(
-        JSON.stringify({ error: 'Invalid token: ' + userError.message }),
+        JSON.stringify({ error: 'Token verification failed. Please sign in again.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (!user) {
       return new Response(
-        JSON.stringify({ error: 'Invalid token - no user found' }),
+        JSON.stringify({ error: 'Invalid token - no user found. Please sign in again.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     // Check if the requesting user has admin role
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -103,7 +132,7 @@ Deno.serve(async (req) => {
     }
 
     // Create the new user with admin API
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email.trim(),
       password: password.trim(),
       user_metadata: { full_name: full_name?.trim() ?? '' },
@@ -126,7 +155,7 @@ Deno.serve(async (req) => {
     }
 
     // Create profile for the new user
-    const { error: profileInsertError } = await supabase
+    const { error: profileInsertError } = await supabaseAdmin
       .from('profiles')
       .insert({
         id: authData.user.id,
@@ -142,7 +171,7 @@ Deno.serve(async (req) => {
       
       // Try to delete the auth user if profile creation failed
       try {
-        await supabase.auth.admin.deleteUser(authData.user.id)
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       } catch (deleteError) {
         console.error('Failed to rollback user creation:', deleteError)
       }
