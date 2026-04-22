@@ -7,6 +7,7 @@ import DashboardPage from './pages/Dashboard';
 import MarketingPage from './pages/Marketing';
 import OrdersPage from './pages/Orders';
 import ProductsPage from './pages/Products';
+import ReviewsPage from './pages/Reviews';
 import UsersPage from './pages/Users';
 import AnalyticsPage from './pages/Analytics';
 import RolesPage from './pages/Roles';
@@ -14,12 +15,15 @@ import SettingsPage from './pages/Settings';
 import { touchStaffPresence } from './lib/commerce';
 import { canAccess, isStaffRole } from './lib/roles';
 import useAuthStore from './store/useAuthStore';
+import useUiStore from './store/useUiStore';
+import { t } from './lib/i18n';
 
 function ProtectedRoute({ children, roles }) {
   const { user, role, isLoading, error, profile } = useAuthStore();
+  const { language } = useUiStore();
 
   if (isLoading) {
-    return <div className="fullscreen-state">Loading dashboard...</div>;
+    return <div className="fullscreen-state">{t('loadingDashboard', language)}</div>;
   }
 
   if (!user) {
@@ -30,8 +34,8 @@ function ProtectedRoute({ children, roles }) {
   if (profile?.is_blocked) {
     return (
       <div className="fullscreen-state restricted-state">
-        <strong>Account Suspended</strong>
-        <p>This account has been suspended. Please contact an administrator.</p>
+        <strong>{t('accountSuspended', language)}</strong>
+        <p>{t('contactAdmin', language)}</p>
       </div>
     );
   }
@@ -39,7 +43,7 @@ function ProtectedRoute({ children, roles }) {
   if (error && !canAccess(role, roles)) {
     return (
       <div className="fullscreen-state restricted-state">
-        <strong>Access restricted</strong>
+        <strong>{t('accessRestricted', language)}</strong>
         <p>{error}</p>
       </div>
     );
@@ -50,10 +54,16 @@ function ProtectedRoute({ children, roles }) {
 
 export default function App() {
   const { checkSession, user, role } = useAuthStore();
+  const language = useUiStore((state) => state.language);
 
   useEffect(() => {
     checkSession().catch(() => {});
   }, [checkSession]);
+
+  useEffect(() => {
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = language;
+  }, [language]);
 
   useEffect(() => {
     if (!user?.id || !isStaffRole(role)) {
@@ -103,6 +113,7 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="users" element={<ProtectedRoute roles={['admin']}><UsersPage /></ProtectedRoute>} />
           <Route path="products" element={<ProtectedRoute roles={['admin', 'marketing']}><ProductsPage /></ProtectedRoute>} />
+          <Route path="reviews" element={<ProtectedRoute roles={['admin']}><ReviewsPage /></ProtectedRoute>} />
           <Route path="orders" element={<ProtectedRoute roles={['admin', 'sales']}><OrdersPage /></ProtectedRoute>} />
           <Route path="chat" element={<ProtectedRoute roles={['admin', 'sales']}><ChatPage /></ProtectedRoute>} />
           <Route path="analytics" element={<ProtectedRoute roles={['admin']}><AnalyticsPage /></ProtectedRoute>} />

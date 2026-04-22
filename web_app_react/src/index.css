@@ -369,6 +369,7 @@ a { text-decoration: none; color: inherit; }
   font-family: inherit; cursor: pointer; transition: all var(--transition);
 }
 .ghost-button:hover { background: var(--bg-muted); color: var(--text); border-color: var(--text-faint); }
+.ghost-button.small { padding: 4px 10px; font-size: 0.75rem; gap: 4px; display: flex; align-items: center; }
 
 .danger-button {
   background: var(--danger); color: white; border: none;
@@ -1073,4 +1074,59 @@ h1 { font-size: 1.75rem; }
   .chat-composer.enhanced { padding: 14px 16px 16px; }
   .chat-composer button { padding: 8px 12px; font-size: 0.75rem; }
   .primary-button { padding: 8px 12px; font-size: 0.8rem; }
+}
+
+/* ═══════════════════════════════════════════
+   RTL SUPPORT
+   ═══════════════════════════════════════════ */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .topbar-right {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .notification-wrap {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .notification-panel {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .page-grid {
+  direction: rtl;
+}
+
+[dir="rtl"] .form-grid {
+  direction: rtl;
+}
+
+[dir="rtl"] .form-grid input,
+[dir="rtl"] .form-grid select {
+  text-align: right;
+}
+
+[dir="rtl"] .thread-meta {
+  text-align: left;
+}
+
+[dir="rtl"] .profile-copy {
+  text-align: left;
+}
+
+[dir="rtl"] .sidebar-nav {
+  direction: rtl;
+}
+
+[dir="rtl"] .sidebar-item {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .dropdown-panel {
+  left: auto;
+  right: 0;
 }

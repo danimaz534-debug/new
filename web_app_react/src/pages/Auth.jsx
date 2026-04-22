@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
+import useUiStore from '../store/useUiStore';
+import { t } from '../lib/i18n';
 
 export default function AuthPage() {
   const { user, signIn, error, isLoading, checkSession } = useAuthStore();
+  const { language } = useUiStore();
   const [form, setForm] = useState({ email: '', password: '' });
   const [localError, setLocalError] = useState('');
   const navigate = useNavigate();
@@ -23,9 +26,8 @@ export default function AuthPage() {
     
     if (isLoading) return;
     
-    // Validate form
     if (!form.email.trim() || !form.password.trim()) {
-      setLocalError('Please enter both email and password');
+      setLocalError(t('invalidCredentials', language));
       return;
     }
     
@@ -52,10 +54,10 @@ export default function AuthPage() {
             <div className="icon">VD</div>
             <span>VoltDash</span>
           </div>
-          <span className="eyebrow">Staff Access</span>
-          <h1>Sign In</h1>
+          <span className="eyebrow">{t('staffUser', language)}</span>
+          <h1>{t('signIn', language)}</h1>
           <p className="auth-description">
-            Admin, Sales, and Marketing portal only.
+            {t('admin', language)}, {t('sales', language)}, {t('marketing', language)} portal only.
             <br />
             Retail users use the mobile app.
           </p>
@@ -63,7 +65,7 @@ export default function AuthPage() {
         
         <form className="auth-form" onSubmit={submit}>
           <label>
-            <span>Email</span>
+            <span>{t('email', language)}</span>
             <input
               type="email"
               value={form.email}
@@ -78,7 +80,7 @@ export default function AuthPage() {
           </label>
           
           <label>
-            <span>Password</span>
+            <span>{t('password', language)}</span>
             <input
               type="password"
               value={form.password}
@@ -86,7 +88,7 @@ export default function AuthPage() {
                 setForm((current) => ({ ...current, password: event.target.value }));
                 setLocalError('');
               }}
-              placeholder="Enter your password"
+              placeholder={t('signInToContinue', language)}
               disabled={isLoading}
               autoComplete="current-password"
             />
@@ -107,10 +109,10 @@ export default function AuthPage() {
             {isLoading ? (
               <>
                 <span className="spinner"></span>
-                Signing in...
+                {t('loading', language)}
               </>
             ) : (
-              'Sign In'
+              t('signIn', language)
             )}
           </button>
         </form>

@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { fetchCurrentProfile, updateCurrentProfile } from '../lib/commerce';
 import { PageHeader, SectionCard } from '../components/ui/SectionCard';
 import useUiStore from '../store/useUiStore';
+import { t } from '../lib/i18n';
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState(null);
-  const { theme, setTheme, pushToast } = useUiStore();
+  const { theme, setTheme, language, setLanguage, pushToast } = useUiStore();
 
   useEffect(() => {
     fetchCurrentProfile().then(setProfile).catch(console.error);
@@ -14,12 +15,11 @@ export default function SettingsPage() {
   const submit = async (event) => {
     event.preventDefault();
     try {
-      const nextProfile = await updateCurrentProfile({
+      await updateCurrentProfile({
         full_name: profile.full_name,
-        preferred_language: profile.preferred_language,
+        preferred_language: language,
       });
-      setProfile(nextProfile);
-      pushToast({ tone: 'success', message: 'Settings saved.' });
+      pushToast({ tone: 'success', message: t('success', language) });
     } catch (error) {
       pushToast({ tone: 'danger', message: error.message });
     }
@@ -27,21 +27,21 @@ export default function SettingsPage() {
 
   return (
     <div className="page-grid">
-      <PageHeader eyebrow="Preferences" title="Settings" subtitle="Profile data and workspace theme." />
+      <PageHeader eyebrow={t('preferences', language)} title={t('settings', language)} subtitle={t('profileSettings', language)} />
       {profile && (
-        <SectionCard title="Profile settings" subtitle="Stored in Supabase profiles">
+        <SectionCard title={t('profileSettings', language)} subtitle="Stored in Supabase profiles">
           <form className="form-grid" onSubmit={submit}>
-            <input value={profile.full_name ?? ''} onChange={(event) => setProfile((current) => ({ ...current, full_name: event.target.value }))} placeholder="Full name" />
+            <input value={profile.full_name ?? ''} onChange={(event) => setProfile((current) => ({ ...current, full_name: event.target.value }))} placeholder={t('fullName', language)} />
             <input value={profile.email ?? ''} disabled />
-            <select value={profile.preferred_language} onChange={(event) => setProfile((current) => ({ ...current, preferred_language: event.target.value }))}>
-              <option value="en">English</option>
-              <option value="ar">Arabic</option>
+            <select value={language} onChange={(event) => setLanguage(event.target.value)}>
+              <option value="en">{t('english', language)}</option>
+              <option value="ar">{t('arabic', language)}</option>
             </select>
             <select value={theme} onChange={(event) => setTheme(event.target.value)}>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
+              <option value="light">{t('light', language)}</option>
+              <option value="dark">{t('dark', language)}</option>
             </select>
-            <button className="primary-button" type="submit">Save settings</button>
+            <button className="primary-button" type="submit">{t('save', language)}</button>
           </form>
         </SectionCard>
       )}

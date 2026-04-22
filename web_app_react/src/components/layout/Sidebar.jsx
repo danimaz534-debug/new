@@ -8,13 +8,15 @@ import {
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Star,
   Users,
   X,
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { NAV_ITEMS, ROLE_LABELS } from '../../lib/roles';
+import { NAV_ITEMS, getRoleLabel } from '../../lib/roles';
 import useAuthStore from '../../store/useAuthStore';
 import useUiStore from '../../store/useUiStore';
+import { t } from '../../lib/i18n';
 
 const iconMap = {
   layout: LayoutDashboard,
@@ -26,6 +28,7 @@ const iconMap = {
   'badge-percent': BadgePercent,
   'shield-check': ShieldCheck,
   settings: Settings,
+  star: Star,
 };
 
 export default function Sidebar({ mobile }) {
@@ -35,6 +38,7 @@ export default function Sidebar({ mobile }) {
     toggleSidebar,
     mobileSidebarOpen,
     closeMobileSidebar,
+    language,
   } = useUiStore();
 
   const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
@@ -78,7 +82,7 @@ export default function Sidebar({ mobile }) {
               onClick={mobile ? closeMobileSidebar : undefined}
             >
               <Icon size={18} />
-              {!(sidebarCollapsed && !mobile) && <span>{item.label}</span>}
+              {!(sidebarCollapsed && !mobile) && <span>{t(item.label, language)}</span>}
             </NavLink>
           );
         })}
@@ -88,8 +92,8 @@ export default function Sidebar({ mobile }) {
         {!(sidebarCollapsed && !mobile) && (
           <>
             <div className="user-info">
-              <strong>{user?.full_name ?? 'Staff member'}</strong>
-              <span className="role-tag">{ROLE_LABELS[role] ?? role}</span>
+              <strong>{user?.full_name ?? t('staffUser', language)}</strong>
+              <span className="role-tag">{getRoleLabel(role, language)}</span>
             </div>
             <span className="user-email">{user?.email ?? ''}</span>
           </>

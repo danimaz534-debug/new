@@ -422,6 +422,7 @@ drop policy if exists "users read own notifications" on public.notifications;
 create policy "users read own notifications" on public.notifications for select using (user_id = auth.uid() or public.current_role() in ('admin', 'sales'));
 create policy "staff insert notifications" on public.notifications for insert with check (user_id = auth.uid() or public.current_role() in ('admin', 'sales'));
 create policy "users update notifications" on public.notifications for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "users delete own notifications" on public.notifications for delete using (user_id = auth.uid() or public.current_role() in ('admin', 'sales'));
 
 drop policy if exists "users write own reviews" on public.reviews;
 create policy "users write own reviews" on public.reviews for insert with check (user_id = auth.uid());
@@ -430,7 +431,7 @@ drop policy if exists "reviews are public readable" on public.reviews;
 create policy "reviews are public readable" on public.reviews for select using (true);
 
 drop policy if exists "chat thread access" on public.chat_threads;
-create policy "chat thread access" on public.chat_threads for select using (user_id = auth.uid() or assigned_sales_id = auth.uid() or public.current_role() = 'admin');
+create policy "chat thread access" on public.chat_threads for select using (user_id = auth.uid() or assigned_sales_id = auth.uid() or public.current_role() in ('admin', 'sales'));
 create policy "chat thread create" on public.chat_threads for insert with check (user_id = auth.uid() or public.current_role() in ('admin', 'sales'));
 create policy "chat thread update" on public.chat_threads for update using (user_id = auth.uid() or assigned_sales_id = auth.uid() or public.current_role() in ('admin', 'sales')) with check (user_id = auth.uid() or assigned_sales_id = auth.uid() or public.current_role() in ('admin', 'sales'));
 
@@ -441,7 +442,7 @@ create policy "chat message access" on public.chat_messages for select using (
     from public.chat_threads t
     where t.user_id = auth.uid()
        or t.assigned_sales_id = auth.uid()
-       or public.current_role() = 'admin'
+       or public.current_role() in ('admin', 'sales')
   )
 );
 create policy "chat message create" on public.chat_messages for insert with check (

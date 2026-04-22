@@ -423,19 +423,29 @@ export async function fetchProducts() {
 
 export async function saveProduct(product) {
   const client = requireClient();
+
+  const tagsValue = (product.tags ?? '')
+    ? (typeof product.tags === 'string' && product.tags.trim())
+      ? product.tags.split(',').map(t => t.trim()).filter(Boolean)
+      : Array.isArray(product.tags)
+        ? product.tags
+        : []
+    : [];
+
   const payload = {
     ...product,
-    slug: product.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    tags: tagsValue,
+    slug: product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
   };
 
   if (product.id) {
     const { error } = await client
-      .from("products")
+      .from('products')
       .update(payload)
-      .eq("id", product.id);
+      .eq('id', product.id);
     if (error) throw error;
   } else {
-    const { error } = await client.from("products").insert(payload);
+    const { error } = await client.from('products').insert(payload);
     if (error) throw error;
   }
 }
@@ -443,6 +453,37 @@ export async function saveProduct(product) {
 export async function deleteProduct(id) {
   const client = requireClient();
   const { error } = await client.from("products").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function fetchProductComments() {
+  return withRetry(async () => {
+    const client = requireClient();
+    const { data, error } = await client
+      .from("product_comments")
+      .select("*, profiles(full_name, email), products(name, image_url)")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    return data ?? [];
+  });
+}
+
+export async function fetchProductRatings() {
+  return withRetry(async () => {
+    const client = requireClient();
+    const { data, error } = await client
+      .from("product_ratings")
+      .select("*")
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  });
+}
+
+export async function deleteProductComment(id) {
+  const client = requireClient();
+  const { error } = await client.from("product_comments").delete().eq("id", id);
   if (error) throw error;
 }
 
@@ -511,6 +552,12 @@ export async function updateUser(id, patch) {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function deleteUser(id) {
+  const client = requireClient();
+  const { error } = await client.from("profiles").delete().eq("id", id);
+  if (error) throw error;
 }
 
 export async function fetchWholesaleCodes() {
@@ -604,6 +651,21 @@ export async function markNotificationRead(id) {
     .from("notifications")
     .update({ is_read: true })
     .eq("id", id);
+  if (error) throw error;
+}
+
+export async function clearAllNotifications() {
+  const client = requireClient();
+  const { data, error: fetchError } = await client
+    .from("notifications")
+    .select("id")
+    .limit(100);
+  if (fetchError) throw fetchError;
+
+  const ids = (data ?? []).map((n) => n.id);
+  if (ids.length === 0) return;
+
+  const { error } = await client.from("notifications").delete().in("id", ids);
   if (error) throw error;
 }
 

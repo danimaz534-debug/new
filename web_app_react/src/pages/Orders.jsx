@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchOrders, subscribeToTables, updateOrder } from '../lib/commerce';
 import { PageHeader, SectionCard } from '../components/ui/SectionCard';
 import useUiStore from '../store/useUiStore';
+import { t } from '../lib/i18n';
 
 const statuses = ['Preparing', 'Shipped', 'On the way', 'Delivered'];
+const statusesAr = ['قيد التحضير', 'تم الشحن', 'في الطريق', 'تم التوصيل'];
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
-  const { searchQuery, pushToast } = useUiStore();
+  const { searchQuery, pushToast, language } = useUiStore();
 
   useEffect(() => {
     const load = () => fetchOrders().then(setOrders).catch(console.error);
@@ -23,7 +25,7 @@ export default function OrdersPage() {
   const save = async (id, patch) => {
     try {
       await updateOrder(id, patch);
-      pushToast({ tone: 'success', message: 'Order updated.' });
+      pushToast({ tone: 'success', message: t('success', language) });
     } catch (error) {
       pushToast({ tone: 'danger', message: error.message });
     }
@@ -31,30 +33,30 @@ export default function OrdersPage() {
 
   return (
     <div className="page-grid">
-      <PageHeader eyebrow="Sales workspace" title="Orders" subtitle="Track fulfillment, update status, and manage tracking codes." />
-      <SectionCard title="Order table" subtitle="Scrollable on mobile and synchronized with Supabase">
+      <PageHeader eyebrow={t('sales', language)} title={t('orders', language)} subtitle="Track fulfillment, update status, and manage tracking codes." />
+      <SectionCard title={t('orders', language)} subtitle="Scrollable on mobile and synchronized with Supabase">
         <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Order ID</th>
-                <th>User</th>
-                <th>Email</th>
-                <th>Price</th>
+                <th>{t('orders', language)}</th>
+                <th>{t('name', language)}</th>
+                <th>{t('email', language)}</th>
+                <th>{t('price', language)}</th>
                 <th>Status</th>
-                <th>Tracking code</th>
+                <th>Tracking</th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders.map((order) => (
                 <tr key={order.id}>
                   <td>{order.id.slice(0, 8)}</td>
-                  <td>{order.profiles?.full_name ?? 'Customer'}</td>
-                  <td>{order.profiles?.email ?? 'No email'}</td>
+                  <td>{order.profiles?.full_name ?? t('wholesaleUser', language)}</td>
+                  <td>{order.profiles?.email ?? t('noEmail', language)}</td>
                   <td>${Number(order.total_amount).toFixed(2)}</td>
                   <td>
                     <select value={order.status} onChange={(event) => save(order.id, { status: event.target.value })}>
-                      {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                      {statuses.map((status, i) => <option key={status} value={status}>{language === 'ar' ? statusesAr[i] : status}</option>)}
                     </select>
                   </td>
                   <td>

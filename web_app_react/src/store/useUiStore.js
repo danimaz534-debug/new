@@ -7,8 +7,16 @@ const getStoredTheme = () => {
   return window.localStorage.getItem('dashboard-theme') ?? 'light';
 };
 
+const getStoredLanguage = () => {
+  if (typeof window === 'undefined') {
+    return 'en';
+  }
+  return window.localStorage.getItem('dashboard-language') ?? 'en';
+};
+
 const useUiStore = create((set) => ({
   theme: getStoredTheme(),
+  language: getStoredLanguage(),
   sidebarCollapsed: false,
   mobileSidebarOpen: false,
   searchQuery: '',
@@ -27,6 +35,12 @@ const useUiStore = create((set) => ({
       }
       return { theme };
     });
+  },
+  setLanguage(language) {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('dashboard-language', language);
+    }
+    set({ language });
   },
   toggleSidebar() {
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed }));

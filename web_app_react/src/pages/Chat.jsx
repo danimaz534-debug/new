@@ -7,23 +7,23 @@ import {
 } from "../lib/commerce";
 import { PageHeader, SectionCard } from "../components/ui/SectionCard";
 import useUiStore from "../store/useUiStore";
+import { t } from "../lib/i18n";
 
-function statusCopy(thread, latestMessage, now) {
+function statusCopy(thread, latestMessage, now, language = 'en') {
   if (!thread) {
     return {
-      label: "No thread selected",
+      label: t('selectThread', language),
       tone: "neutral",
-      helper: "Choose a conversation from the list.",
+      helper: t('conversations', language),
     };
   }
 
   if (latestMessage?.sender_type === "user") {
     if (!thread.last_sales_reply_at) {
       return {
-        label: "Awaiting first sales reply",
+        label: t('awaitingReply', language),
         tone: "warning",
-        helper:
-          'AI fallback sends "We will contact you shortly" after 5 minutes.',
+        helper: t('realtimeWholesale', language),
       };
     }
 
@@ -41,14 +41,14 @@ function statusCopy(thread, latestMessage, now) {
     }
 
     return {
-      label: "Waiting for sales",
+      label: t('waitingForSales', language),
       tone: "warning",
       helper: `Fallback triggers in about ${5 - minutes} minute(s).`,
     };
   }
 
   return {
-    label: "Handled",
+    label: t('handled', language),
     tone: "success",
     helper: "Latest response came from sales or AI.",
   };
@@ -62,7 +62,7 @@ export default function ChatPage() {
   const [threadSearch, setThreadSearch] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const streamRef = useRef(null);
-  const { pushToast } = useUiStore();
+  const { pushToast, language } = useUiStore();
 
   // Disable send when no thread selected
   const isSendDisabled = !activeThread || draft.trim() === "";
@@ -116,7 +116,7 @@ export default function ChatPage() {
   );
 
   const latestMessage = messages.length ? messages[messages.length - 1] : null;
-  const status = statusCopy(activeConversation, latestMessage, now);
+  const status = statusCopy(activeConversation, latestMessage, now, language);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -140,12 +140,12 @@ export default function ChatPage() {
   return (
     <div className="page-grid">
       <PageHeader
-        eyebrow="Sales support"
-        title="Chat"
-        subtitle="Realtime wholesale conversations with Supabase fallback automation after 5 minutes."
+        eyebrow={t('salesSupport', language)}
+        title={t('chat', language)}
+        subtitle={status.helper}
       />
       <SectionCard
-        title="Conversations"
+        title={t('conversations', language)}
         subtitle={status.helper}
       >
         <div className="chat-toolbar">
@@ -153,10 +153,9 @@ export default function ChatPage() {
             <input
               value={threadSearch}
               onChange={(event) => setThreadSearch(event.target.value)}
-              placeholder="Search conversations..."
+              placeholder={t('searchConversations', language)}
             />
           </label>
-          {/* Status pill removed */}
         </div>
         <div className="chat-layout enhanced">
           <div className="thread-column enhanced">
@@ -175,14 +174,14 @@ export default function ChatPage() {
                   onClick={() => setActiveThread(thread.id)}
                 >
                   <div className="thread-topline">
-                    <strong>{thread.profiles?.full_name ?? "Wholesale user"}</strong>
+                    <strong>{thread.profiles?.full_name ?? t('wholesaleUser', language)}</strong>
                     {waiting && <span className="thread-badge">Waiting</span>}
                   </div>
-                  <span>{thread.profiles?.email ?? "No email"}</span>
+                  <span>{thread.profiles?.email ?? t('noEmail', language)}</span>
                   <div className="thread-meta">
                     <small>{new Date(thread.created_at).toLocaleString()}</small>
                     <small>
-                      {thread.assigned_sales_id ? "Assigned" : "Unassigned"}
+                      {thread.assigned_sales_id ? t('assigned', language) : t('unassigned', language)}
                     </small>
                   </div>
                 </button>
@@ -190,7 +189,7 @@ export default function ChatPage() {
             })}
             {filteredThreads.length === 0 && (
               <div className="thread-empty">
-                <p className="muted-copy">No matching conversations.</p>
+                <p className="muted-copy">{t('noMatchingConversations', language)}</p>
               </div>
             )}
           </div>
@@ -198,15 +197,14 @@ export default function ChatPage() {
             <div className="chat-column-head">
               <div>
                 <strong>
-                  {activeConversation?.profiles?.full_name ?? "Select a thread"}
+                  {activeConversation?.profiles?.full_name ?? t('selectThread', language)}
                 </strong>
-                <span>{activeConversation?.profiles?.email ?? "No email"}</span>
+                <span>{activeConversation?.profiles?.email ?? t('noEmail', language)}</span>
               </div>
               <div className="chat-head-meta">
-                {/* Status pill removed */}
                 {activeConversation && (
                   <small>
-                    Opened {new Date(activeConversation.created_at).toLocaleString()}
+                    {t('opened', language)} {new Date(activeConversation.created_at).toLocaleString()}
                   </small>
                 )}
               </div>
@@ -215,8 +213,8 @@ export default function ChatPage() {
             <div className="chat-stream enhanced" ref={streamRef}>
               {messages.length === 0 ? (
                 <div className="chat-empty-state">
-                  <strong>No messages yet</strong>
-                  <p>Send the first sales reply when the customer reaches out.</p>
+                  <strong>{t('noMessagesYet', language)}</strong>
+                  <p>{t('sendFirstReply', language)}</p>
                 </div>
               ) : (
                 messages.map((message) => (
@@ -236,14 +234,12 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Status note removed */}
-
             <form className="chat-composer enhanced" onSubmit={submit}>
               <input
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Reply to the customer... (Ctrl/Cmd+Enter to send)"
+                placeholder={t('replyPlaceholder', language)}
                 disabled={!activeThread}
               />
               <button 
@@ -251,7 +247,7 @@ export default function ChatPage() {
                 type="submit"
                 disabled={!activeThread}
               >
-                Send
+                {t('send', language)}
               </button>
             </form>
           </div>

@@ -3,6 +3,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, Res
 import { fetchDashboardData, subscribeToTables } from '../lib/commerce';
 import { PageHeader, SectionCard, SkeletonCards, StatCard } from '../components/ui/SectionCard';
 import useUiStore from '../store/useUiStore';
+import { t } from '../lib/i18n';
 
 const pieColors = ['#2563EB', '#0F766E', '#F97316', '#EF4444', '#8B5CF6'];
 
@@ -12,7 +13,7 @@ export default function DashboardPage() {
   const [error, setError] = useState(null);
   const retryCount = useRef(0);
   const maxRetries = 3;
-  const { pushToast } = useUiStore();
+  const { pushToast, language } = useUiStore();
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -77,14 +78,14 @@ export default function DashboardPage() {
     return (
       <div className="page-grid">
         <PageHeader
-          eyebrow="Error"
-          title="Dashboard"
-          subtitle="Failed to load dashboard data"
+          eyebrow={t('error', language)}
+          title={t('dashboard', language)}
+          subtitle={t('noData', language)}
         />
         <div className="section-card" style={{ textAlign: 'center', padding: '60px' }}>
           <p style={{ color: 'var(--danger)', marginBottom: '20px' }}>{error}</p>
           <button className="primary-button" onClick={() => { retryCount.current = 0; load(); }}>
-            Retry
+            {t('next', language)}
           </button>
         </div>
       </div>
@@ -95,7 +96,7 @@ export default function DashboardPage() {
     <div className="page-grid">
       <PageHeader
         eyebrow="Executive overview"
-        title="Dashboard"
+        title={t('dashboard', language)}
         subtitle="Live revenue, fulfillment, staff activity, and campaign movement from Supabase."
       />
 
@@ -112,24 +113,24 @@ export default function DashboardPage() {
       {state && (
         <>
           <div className="content-grid two-up">
-            <SectionCard title="Revenue" subtitle="Last 6 months">
+            <SectionCard title={t('revenue', language)} subtitle={t('last6Months', language)}>
               <div className="chart-box">
                 <ResponsiveContainer width="100%" height={280}>
                   <LineChart data={state.revenueSeries}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="name" stroke="var(--text-soft)" />
                     <YAxis stroke="var(--text-soft)" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        background: 'var(--bg-elevated)', 
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--bg-elevated)',
                         border: '1px solid var(--border)',
                         borderRadius: '8px'
-                      }} 
+                      }}
                     />
-                    <Line 
-                      dataKey="revenue" 
-                      stroke="#2563EB" 
-                      strokeWidth={3} 
+                    <Line
+                      dataKey="revenue"
+                      stroke="#2563EB"
+                      strokeWidth={3}
                       dot={{ fill: '#2563EB', strokeWidth: 2, r: 4 }}
                       activeDot={{ r: 6 }}
                     />
@@ -138,7 +139,7 @@ export default function DashboardPage() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Best-selling products" subtitle="Order item quantity share">
+            <SectionCard title={t('bestSellers', language)} subtitle={t('orderItemQuantity', language)}>
               <div className="chart-box">
                 <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
@@ -169,16 +170,16 @@ export default function DashboardPage() {
           </div>
 
           <div className="content-grid two-up">
-            <SectionCard title="Order status" subtitle="Current fulfillment distribution">
+            <SectionCard title={t('orderStatuses', language)} subtitle={t('fulfillmentDistribution', language)}>
               <div className="chart-box">
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={state.orderBars}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="name" stroke="var(--text-soft)" />
                     <YAxis stroke="var(--text-soft)" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        background: 'var(--bg-elevated)', 
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--bg-elevated)',
                         border: '1px solid var(--border)',
                         borderRadius: '8px'
                       }}
@@ -189,10 +190,10 @@ export default function DashboardPage() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Activity feed" subtitle="Sales actions and marketing updates">
+            <SectionCard title={t('recentActivity', language)} subtitle={t('salesActions', language)}>
               <div className="activity-list">
                 {state.activityFeed.length === 0 ? (
-                  <p className="muted-copy">No recent activity</p>
+                  <p className="muted-copy">{t('noRecentActivity', language)}</p>
                 ) : (
                   state.activityFeed.map((item) => (
                     <article key={item.id} className="activity-item">
@@ -206,10 +207,10 @@ export default function DashboardPage() {
             </SectionCard>
           </div>
 
-          <SectionCard title="Employee tracking" subtitle="Staff visibility based on real activity records">
+          <SectionCard title={t('employeeTracking', language)} subtitle={t('staffVisibility', language)}>
             <div className="tracking-grid">
               {state.employeeTracking.length === 0 ? (
-                <p className="muted-copy">No staff members found</p>
+                <p className="muted-copy">{t('noStaffMembers', language)}</p>
               ) : (
                 state.employeeTracking.map((employee) => (
                   <article key={employee.id} className="employee-card">
@@ -218,8 +219,8 @@ export default function DashboardPage() {
                       <p>{employee.email}</p>
                     </div>
                     <div className="employee-meta">
-                      <span className={`status-pill ${employee.status === 'Active' ? 'success' : 'neutral'}`}>{employee.status}</span>
-                      <span>{employee.role}</span>
+                      <span className={`status-pill ${employee.status === 'Active' ? 'success' : 'neutral'}`}>{t(employee.status, language)}</span>
+                      <span>{t(employee.role, language)}</span>
                       <span>{employee.screenTime}</span>
                     </div>
                   </article>

@@ -1,9 +1,10 @@
-import { Bell, Menu, Moon, Search, Sun } from "lucide-react";
+import { Bell, Menu, Moon, Search, Sun, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { fetchNotifications, markNotificationRead } from "../../lib/commerce";
-import { ROLE_LABELS } from "../../lib/roles";
+import { clearAllNotifications, fetchNotifications, markNotificationRead } from "../../lib/commerce";
+import { getRoleLabel } from "../../lib/roles";
 import useAuthStore from "../../store/useAuthStore";
 import useUiStore from "../../store/useUiStore";
+import { t } from "../../lib/i18n";
 
 export default function Navbar() {
   const { user, role, signOut } = useAuthStore();
@@ -14,6 +15,7 @@ export default function Navbar() {
     searchQuery,
     setSearchQuery,
     pushToast,
+    language,
   } = useUiStore();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -44,6 +46,17 @@ export default function Navbar() {
     }
   };
 
+  const handleClearAll = async () => {
+    if (notifications.length === 0) return;
+    try {
+      await clearAllNotifications();
+      setNotifications([]);
+      setShowNotifications(false);
+    } catch (error) {
+      pushToast({ tone: "danger", message: error.message });
+    }
+  };
+
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -63,7 +76,7 @@ export default function Navbar() {
             name="global-search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search users, products, orders..."
+            placeholder={t('searchUsersProducts', language)}
             autoComplete="off"
           />
         </label>
@@ -94,12 +107,23 @@ export default function Navbar() {
           {showNotifications && (
             <div className="dropdown-panel notifications-panel">
               <div className="dropdown-header">
-                <strong>Notifications</strong>
-                <span>{unread.length} unread</span>
+                <strong>{t('notifications', language)}</strong>
+                <span>{unread.length} {t('unread', language)}</span>
+                {notifications.length > 0 && (
+                  <button
+                    className="ghost-button small"
+                    type="button"
+                    onClick={handleClearAll}
+                    aria-label={t('clearAll', language)}
+                  >
+                    <Trash2 size={14} />
+                    {t('clearAll', language)}
+                  </button>
+                )}
               </div>
               <div className="notification-list">
                 {notifications.length === 0 && (
-                  <p className="muted-copy">No notifications yet.</p>
+                  <p className="muted-copy">{t('noData', language)}</p>
                 )}
                 {notifications.map((notification) => (
                   <button
@@ -122,11 +146,11 @@ export default function Navbar() {
 
         <div className="profile-chip">
           <div className="profile-copy">
-            <strong>{user?.full_name ?? "Staff user"}</strong>
-            <span>{ROLE_LABELS[role] ?? role}</span>
+            <strong>{user?.full_name ?? t('staffUser', language)}</strong>
+            <span>{getRoleLabel(role, language)}</span>
           </div>
           <button className="ghost-button" type="button" onClick={signOut}>
-            Logout
+            {t('logout', language)}
           </button>
         </div>
       </div>

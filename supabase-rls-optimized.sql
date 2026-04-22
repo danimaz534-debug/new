@@ -52,6 +52,18 @@ CREATE POLICY "users read own notifications"
     )
   );
 
+DROP POLICY IF EXISTS "users delete own notifications" ON public.notifications;
+CREATE POLICY "users delete own notifications" 
+  ON public.notifications 
+  FOR DELETE 
+  USING (
+    user_id = auth.uid() 
+    OR auth.uid() IN (
+      SELECT id FROM public.profiles 
+      WHERE role IN ('admin', 'sales') AND id = auth.uid()
+    )
+  );
+
 -- Orders: Simplified policies
 DROP POLICY IF EXISTS "users read own orders" ON public.orders;
 CREATE POLICY "users read own orders" 
@@ -65,7 +77,7 @@ CREATE POLICY "users read own orders"
     )
   );
 
--- Chat threads: Optimize with direct checks
+-- Chat threads: Sales can see ALL threads (including admin chats)
 DROP POLICY IF EXISTS "chat thread access" ON public.chat_threads;
 CREATE POLICY "chat thread access" 
   ON public.chat_threads 
@@ -75,11 +87,11 @@ CREATE POLICY "chat thread access"
     OR assigned_sales_id = auth.uid()
     OR auth.uid() IN (
       SELECT id FROM public.profiles 
-      WHERE role = 'admin' AND id = auth.uid()
+      WHERE role IN ('admin', 'sales') AND id = auth.uid()
     )
   );
 
--- Chat messages: Simplify with EXISTS instead of IN for better performance
+-- Chat messages: Sales can see ALL messages (including admin conversations)
 DROP POLICY IF EXISTS "chat message access" ON public.chat_messages;
 CREATE POLICY "chat message access" 
   ON public.chat_messages 
@@ -91,7 +103,7 @@ CREATE POLICY "chat message access"
       AND (
         t.user_id = auth.uid() 
         OR t.assigned_sales_id = auth.uid()
-        OR auth.uid() IN (SELECT id FROM public.profiles WHERE role = 'admin' AND id = auth.uid())
+        OR auth.uid() IN (SELECT id FROM public.profiles WHERE role IN ('admin', 'sales') AND id = auth.uid())
       )
     )
   );
