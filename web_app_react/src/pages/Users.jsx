@@ -5,11 +5,13 @@ import {
   updateUser,
   deleteUser,
   createUser,
-} from "../lib/commerce";
+  resetUserPassword,
+} from "../lib/api";
 import { PageHeader, SectionCard } from "../components/ui/SectionCard";
 import useUiStore from "../store/useUiStore";
 import { STAFF_ROLES, getRoleLabel } from "../lib/roles";
 import { t } from "../lib/i18n";
+import { Search, Key } from "lucide-react";
 
 const roles = ["admin", "sales", "marketing", "wholesale", "retail"];
 const staffRoles = STAFF_ROLES;
@@ -25,7 +27,10 @@ export default function UsersPage() {
     role: "sales",
   });
   const [isCreating, setIsCreating] = useState(false);
-  const { searchQuery, pushToast, language } = useUiStore();
+  const [resetPasswordId, setResetPasswordId] = useState(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const { searchQuery, setSearchQuery, pushToast, language } = useUiStore();
 
   useEffect(() => {
     let isMounted = true;
@@ -86,6 +91,15 @@ export default function UsersPage() {
     [users, searchQuery],
   );
 
+  const highlightText = (text, search) => {
+    if (!search || !text) return text;
+    const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) =>
+      regex.test(part) ? <mark key={i} style={{ backgroundColor: 'var(--primary-soft)', color: 'var(--primary)', padding: '0 2px', borderRadius: '2px' }}>{part}</mark> : part
+    );
+  };
+
 const handleDeleteUser = async (id) => {
     if (!window.confirm(t('deleteThisUser', language))) return;
     try {
@@ -104,6 +118,27 @@ const handleDeleteUser = async (id) => {
       pushToast({ tone: "success", message: t('userUpdated', language) });
       const data = await fetchUsers();
       setUsers(data);
+    } catch (error) {
+      pushToast({ tone: "danger", message: error.message });
+    }
+  };
+
+  const handleResetPassword = async (id) => {
+    if (!resetPasswordValue) {
+      pushToast({ tone: "danger", message: t('passwordMinChars', language) });
+      return;
+    }
+
+    if (resetPasswordValue.length < 6) {
+      pushToast({ tone: "danger", message: t('passwordMinChars', language) });
+      return;
+    }
+
+    try {
+      await resetUserPassword(id, resetPasswordValue);
+      pushToast({ tone: "success", message: "Password reset successfully" });
+      setResetPasswordId(null);
+      setResetPasswordValue("");
     } catch (error) {
       pushToast({ tone: "danger", message: error.message });
     }
@@ -152,12 +187,30 @@ const handleDeleteUser = async (id) => {
         title={t('createStaffAccount', language)}
         subtitle={t('adminCreateDashboard', language)}
       >
-        <button
-          className="primary-button"
-          onClick={() => setShowCreateForm(!showCreateForm)}
-        >
-          {showCreateForm ? t('cancel', language) : t('createNewUser', language)}
-        </button>
+        <div className="chat-toolbar" style={{ marginBottom: "20px" }}>
+          <label className="search-bar">
+            <Search size={16} />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={t('searchUsersProducts', language)}
+            />
+          </label>
+          {searchQuery && (
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>{t('searchingFor', language)}: <strong style={{ color: 'var(--primary)' }}>{searchQuery}</strong></span>
+              <button className="ghost-button small" onClick={() => setSearchQuery('')}>{t('clear', language)}</button>
+            </div>
+          )}
+        </div>
+        {!showCreateForm && (
+          <button
+            className="primary-button"
+            onClick={() => setShowCreateForm(true)}
+          >
+            {t('createNewUser', language)}
+          </button>
+        )}
 
         {showCreateForm && (
           <form onSubmit={handleCreateUser} className="form-grid" style={{ marginTop: "20px" }}>
@@ -179,7 +232,7 @@ const handleDeleteUser = async (id) => {
                 {staffRoles.map((role) => <option key={role} value={role}>{getRoleLabel(role, language)}</option>)}
               </select>
             </label>
-            <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px" }}>
+            <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px", alignItems: "center" }}>
               <button type="submit" className="primary-button" disabled={isCreating}>
                 {isCreating ? t('creating', language) : t('createNewUser', language)}
               </button>
@@ -212,20 +265,21 @@ const handleDeleteUser = async (id) => {
                   <th>{t('status', language)}</th>
                   <th>{t('orders', language)}</th>
                   <th>{t('totalSpend', language)}</th>
+                  <th>{t('actions', language)}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: "center", padding: "40px", color: "var(--text-faint)" }}>
+                    <td colSpan="7" style={{ textAlign: "center", padding: "40px", color: "var(--text-faint)" }}>
                       {t('noUsersFound', language)}
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map((user) => (
                     <tr key={user.id}>
-                      <td>{user.full_name ?? t('unnamedUser', language)}</td>
-                      <td>{user.email}</td>
+                      <td>{highlightText(user.full_name ?? t('unnamedUser', language), searchQuery)}</td>
+                      <td>{highlightText(user.email, searchQuery)}</td>
                       <td>
                         <select value={user.role} onChange={(event) => save(user.id, { role: event.target.value })}>
                           {roles.map((role) => <option key={role} value={role}>{getRoleLabel(role, language)}</option>)}
@@ -244,6 +298,40 @@ const handleDeleteUser = async (id) => {
                       </td>
                       <td>{user.orders}</td>
                       <td>${Number(user.totalSpend).toFixed(2)}</td>
+                      <td>
+                        <div className="table-actions">
+                          {resetPasswordId === user.id ? (
+                            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                              <input
+                                type={showPassword ? "text" : "password"}
+                                value={resetPasswordValue}
+                                onChange={(e) => setResetPasswordValue(e.target.value)}
+                                placeholder={t('newPassword', language)}
+                                style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                              />
+                              <button
+                                type="button"
+                                className="ghost-button"
+                                style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                onClick={() => setShowPassword(!showPassword)}
+                                title={showPassword ? t('hidePassword', language) : t('showPassword', language)}
+                              >
+                                <Key size={14} />
+                              </button>
+                              <button className="primary-button" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={() => handleResetPassword(user.id)}>
+                                {t('save', language)}
+                              </button>
+                              <button className="ghost-button" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={() => { setResetPasswordId(null); setResetPasswordValue(""); setShowPassword(false); }}>
+                                {t('cancel', language)}
+                              </button>
+                            </div>
+                          ) : (
+                            <button className="ghost-button" type="button" onClick={() => { setResetPasswordId(user.id); setResetPasswordValue(""); setShowPassword(false); }} title={t('resetPassword', language)}>
+                              <Key size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}

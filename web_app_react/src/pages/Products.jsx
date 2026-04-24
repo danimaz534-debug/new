@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '../components/ui/Modal';
 import { PageHeader, SectionCard } from '../components/ui/SectionCard';
-import { deleteProduct, fetchProducts, saveProduct, subscribeToTables } from '../lib/commerce';
+import { deleteProduct, fetchProducts, saveProduct, subscribeToTables } from '../lib/api';
+import { fetchFavoriteCountsByProduct } from '../lib/api/favorites';
 import { supabase } from '../lib/supabase';
 import useUiStore from '../store/useUiStore';
 import { t } from '../lib/i18n';
-import { getRoleLabel } from '../lib/roles';
+import { Heart } from 'lucide-react';
 
 const emptyForm = {
   name: '',
@@ -30,35 +31,15 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState(emptyForm);
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [favCounts, setFavCounts] = useState({});
   const { searchQuery, pushToast, language } = useUiStore();
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
-      
-      const { error } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, file);
-
-      if (error) throw error;
-
-      const { data: publicUrlData } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName);
-
-      setEditing((current) => ({ ...current, image_url: publicUrlData.publicUrl }));
-      pushToast({ tone: 'success', message: t('imageUploaded', language) });
-    } catch (error) {
-      pushToast({ tone: 'danger', message: t('uploadFailed', language) + error.message });
-    } finally {
-      setUploading(false);
-    }
-  };
+  // Fetch favorite counts for all products (admin analytics)
+  useEffect(() => {
+    const load = () => fetchFavoriteCountsByProduct().then(counts => setFavCounts(counts || {})).catch(console.error);
+    load();
+    return subscribeToTables('favorites-live-admin', ['favorites'], load);
+  }, []);
 
   useEffect(() => {
     const load = () => fetchProducts().then(setProducts).catch(console.error);
@@ -67,9 +48,38 @@ export default function ProductsPage() {
   }, []);
 
   const filteredProducts = useMemo(
-    () => products.filter((product) => [product.name, product.brand, product.category].join(' ').toLowerCase().includes(searchQuery.toLowerCase())),
+    () => products.filter((product) =>
+      [product.name, product.brand, product.category].join(' ').toLowerCase().includes(searchQuery.toLowerCase())),
     [products, searchQuery],
   );
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
+      
+      const { error } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, file);
+      
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(fileName);
+      
+      setEditing((current) => ({ ...current, image_url: publicUrl }));
+      pushToast({ tone: 'success', message: t('imageUploaded', language) });
+    } catch (error) {
+      pushToast({ tone: 'danger', message: t('uploadFailed', language) + error.message });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -92,6 +102,12 @@ export default function ProductsPage() {
     }
   };
 
+  const calculateDiscountedPrice = (price, discount) => {
+    const numPrice = Number(price);
+    const numDiscount = Number(discount) || 0;
+    return (numPrice * (1 - numDiscount / 100)).toFixed(2);
+  };
+
   return (
     <div className="page-grid">
       <PageHeader
@@ -105,7 +121,26 @@ export default function ProductsPage() {
         <div className="product-grid">
           {filteredProducts.map((product) => (
             <article key={product.id} className="product-card">
-              <div className="product-media" style={{ backgroundImage: `url(${product.image_url || ''})` }} />
+              <div className="product-media" style={{ 
+                backgroundImage: product.image_url ? 'url(' + product.image_url + ')' : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                height: '180px'
+              }}>
+                {!product.image_url && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-faint)',
+                    fontSize: '2rem'
+                  }}>
+                    {product.name?.[0]?.toUpperCase() || '?'}
+                  </div>
+                )}
+              </div>
               <div className="product-body">
                 <div className="product-heading">
                   <div>
@@ -113,7 +148,37 @@ export default function ProductsPage() {
                     <h3>{product.name}</h3>
                     <p>{product.brand}</p>
                   </div>
-                  <strong>${Number(product.price).toFixed(2)}</strong>
+                  <span
+                    className="favorite-count-badge"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 10px',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      color: (favCounts[product.id] || 0) > 0 ? 'var(--danger)' : 'var(--text-faint)',
+                      background: (favCounts[product.id] || 0) > 0 ? 'var(--danger-soft, rgba(239,68,68,0.1))' : 'var(--bg-muted)',
+                    }}
+                    title={`${favCounts[product.id] || 0} user(s) favorited this product`}
+                  >
+                    <Heart
+                      size={14}
+                      fill={(favCounts[product.id] || 0) > 0 ? 'var(--danger)' : 'none'}
+                    />
+                    {favCounts[product.id] || 0}
+                  </span>
+                </div>
+                <div>
+                  <strong>
+                    {calculateDiscountedPrice(product.price, product.discount_percent)}
+                  </strong>
+                  {product.discount_percent > 0 && (
+                    <small style={{ textDecoration: 'line-through', color: 'var(--text-faint)', fontSize: '0.8rem' }}>
+                      {Number(product.price).toFixed(2)}
+                    </small>
+                  )}
                 </div>
                 <div className="tag-row">
                   {(product.tags ?? []).map((tag) => <span key={tag} className="tag">{tag}</span>)}

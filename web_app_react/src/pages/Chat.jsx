@@ -3,8 +3,9 @@ import {
   fetchChatThreads,
   fetchMessages,
   sendSalesMessage,
+  deleteChatMessages,
   subscribeToTables,
-} from "../lib/commerce";
+} from "../lib/api";
 import { PageHeader, SectionCard } from "../components/ui/SectionCard";
 import useUiStore from "../store/useUiStore";
 import { t } from "../lib/i18n";
@@ -124,6 +125,23 @@ export default function ChatPage() {
     try {
       await sendSalesMessage(activeThread, draft.trim());
       setDraft("");
+      // Refresh messages immediately after sending
+      fetchMessages(activeThread).then(setMessages).catch(console.error);
+    } catch (error) {
+      pushToast({ tone: "danger", message: error.message });
+    }
+  };
+
+  const handleEmptyChat = async () => {
+    if (!activeThread) return;
+    if (!window.confirm(t('confirmEmptyChat', language))) return;
+    try {
+      await deleteChatMessages(activeThread);
+      pushToast({ tone: "success", message: "Chat emptied successfully" });
+      setMessages([]);
+      // Refresh threads to update UI
+      const updatedThreads = await fetchChatThreads();
+      setThreads(updatedThreads);
     } catch (error) {
       pushToast({ tone: "danger", message: error.message });
     }
@@ -207,6 +225,16 @@ export default function ChatPage() {
                     {t('opened', language)} {new Date(activeConversation.created_at).toLocaleString()}
                   </small>
                 )}
+                {activeThread && (
+                  <button
+                    className="ghost-button small"
+                    type="button"
+                    onClick={handleEmptyChat}
+                    style={{ marginLeft: '12px' }}
+                  >
+                    {t('emptyChat', language)}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -245,7 +273,7 @@ export default function ChatPage() {
               <button 
                 className="primary-button" 
                 type="submit"
-                disabled={!activeThread}
+                disabled={isSendDisabled}
               >
                 {t('send', language)}
               </button>

@@ -1,6 +1,6 @@
-import { Bell, Menu, Moon, Search, Sun, Trash2 } from "lucide-react";
+import { Bell, Menu, Moon, Sun, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { clearAllNotifications, fetchNotifications, markNotificationRead } from "../../lib/commerce";
+import { clearAllNotifications, fetchCurrentProfile, fetchNotifications, markNotificationRead } from "../../lib/api";
 import { getRoleLabel } from "../../lib/roles";
 import useAuthStore from "../../store/useAuthStore";
 import useUiStore from "../../store/useUiStore";
@@ -12,13 +12,16 @@ export default function Navbar() {
     theme,
     toggleTheme,
     openMobileSidebar,
-    searchQuery,
-    setSearchQuery,
     pushToast,
     language,
   } = useUiStore();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    fetchCurrentProfile().then(setProfile).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchNotifications()
@@ -68,18 +71,6 @@ export default function Navbar() {
         >
           <Menu size={18} />
         </button>
-
-        <label className="search-bar">
-          <Search size={16} />
-          <input
-            id="global-search"
-            name="global-search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder={t('searchUsersProducts', language)}
-            autoComplete="off"
-          />
-        </label>
       </div>
 
       <div className="topbar-right">
@@ -145,6 +136,19 @@ export default function Navbar() {
         </div>
 
         <div className="profile-chip">
+          <div style={{ position: 'relative', width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--border)', flexShrink: 0 }}>
+            {profile?.avatar_url ? (
+              <img 
+                src={profile.avatar_url} 
+                alt="Avatar"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <div style={{ width: '100%', height: '100%', background: 'var(--primary-soft)', display: 'grid', placeItems: 'center', color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem' }}>
+                {(profile?.full_name?.[0] || user?.email?.[0] || '?').toUpperCase()}
+              </div>
+            )}
+          </div>
           <div className="profile-copy">
             <strong>{user?.full_name ?? t('staffUser', language)}</strong>
             <span>{getRoleLabel(role, language)}</span>
