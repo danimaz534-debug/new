@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { verifyProductComment, unverifyProductComment, togglePurchaseVerified, fetchProductComments, subscribeToTables } from '../lib/api';
+import { deleteProductComment, togglePurchaseVerified, fetchProductComments, subscribeToTables } from '../lib/api';
 import { PageHeader, SectionCard } from '../components/ui/SectionCard';
 import useUiStore from '../store/useUiStore';
 
@@ -48,21 +48,12 @@ export default function ReviewsPage() {
     return (sum / comments.length).toFixed(1);
   }, [comments]);
 
-  const handleVerify = async (id) => {
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this review? This action cannot be undone.')) return;
     try {
-      await verifyProductComment(id);
-      setComments((prev) => prev.map((c) => c.id === id ? { ...c, is_verified: true } : c));
-      pushToast({ tone: 'success', message: 'Review verified.' });
-    } catch (err) {
-      pushToast({ tone: 'danger', message: err.message });
-    }
-  };
-
-  const handleUnverify = async (id) => {
-    try {
-      await unverifyProductComment(id);
-      setComments((prev) => prev.map((c) => c.id === id ? { ...c, is_verified: false } : c));
-      pushToast({ tone: 'success', message: 'Review unverified.' });
+      await deleteProductComment(id);
+      setComments((prev) => prev.filter((c) => c.id !== id));
+      pushToast({ tone: 'success', message: 'Review deleted.' });
     } catch (err) {
       pushToast({ tone: 'danger', message: err.message });
     }
@@ -128,8 +119,8 @@ export default function ReviewsPage() {
                   <th>Title</th>
                   <th>Comment</th>
                   <th>Purchase Verified</th>
-                  <th>Admin Verified</th>
                   <th>Date</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -183,31 +174,24 @@ export default function ReviewsPage() {
                         </button>
                       )}
                     </td>
-                    <td>
-                      {comment.is_verified ? (
-                        <button
-                          className="ghost-button small"
-                          onClick={() => handleUnverify(comment.id)}
-                          title="Unverify review"
-                        >
-                          Unverify
-                        </button>
-                      ) : (
-                        <button
-                          className="ghost-button small"
-                          onClick={() => handleVerify(comment.id)}
-                          title="Verify review"
-                        >
-                          Verify
-                        </button>
-                      )}
-                    </td>
                     <td className="date-cell">
                       {new Date(comment.created_at).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
                       })}
+                    </td>
+                    <td>
+                      <button
+                        className="ghost-button danger"
+                        onClick={() => handleDelete(comment.id)}
+                        title="Delete review"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 ))}
