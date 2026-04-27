@@ -9,11 +9,16 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState({
     full_name: '',
     preferred_language: 'en',
+    preferred_theme: 'dark',
     avatar_url: '',
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { pushToast, language: currentLanguage, setLanguage, theme, setTheme } = useUiStore();
+
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, preferred_theme: theme }));
+  }, [theme]);
 
 
   useEffect(() => {
@@ -23,6 +28,7 @@ export default function SettingsPage() {
         ...prev,
         full_name: data?.full_name ?? '',
         preferred_language: data?.preferred_language ?? 'en',
+        preferred_theme: theme,
         avatar_url: data?.avatar_url ?? '',
       }));
     }).catch(console.error);
@@ -39,6 +45,7 @@ export default function SettingsPage() {
       });
       
       setLanguage(formData.preferred_language);
+      setTheme(formData.preferred_theme);
       
       pushToast({ tone: 'success', message: t('success', currentLanguage) || 'Settings updated successfully' });
     } catch (error) {
@@ -160,24 +167,13 @@ export default function SettingsPage() {
               </div>
               <div className="form-field">
                 <label><Palette size={14} /> Theme</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    type="button"
-                    className={`${theme === 'dark' ? 'primary-button' : 'ghost-button'}`}
-                    onClick={() => setTheme('dark')}
-                    style={{ flex: 1 }}
-                  >
-                    Dark
-                  </button>
-                  <button
-                    type="button"
-                    className={`${theme === 'light' ? 'primary-button' : 'ghost-button'}`}
-                    onClick={() => setTheme('light')}
-                    style={{ flex: 1 }}
-                  >
-                    Light
-                  </button>
-                </div>
+                <select 
+                  value={formData.preferred_theme} 
+                  onChange={(e) => setFormData(p => ({ ...p, preferred_theme: e.target.value }))}
+                >
+                  <option value="dark">Dark</option>
+                  <option value="light">Light</option>
+                </select>
               </div>
             </div>
           </div>
