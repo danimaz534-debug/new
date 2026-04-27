@@ -212,7 +212,7 @@ export default function ChatPage() {
                   </div>
                   <span>{thread.profiles?.email ?? t('noEmail', language)}</span>
                   <div className="thread-meta">
-                    <small>{new Date(thread.created_at).toLocaleString()}</small>
+                    <small>{new Date(thread.latest_message_at).toLocaleString()}</small>
                     <small>
                       {thread.assigned_sales_id ? t('assigned', language) : t('unassigned', language)}
                     </small>
