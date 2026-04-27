@@ -26,6 +26,7 @@ export const NAV_ITEMS = [
   { to: '/reviews', label: 'reviews', icon: 'star', roles: ['admin'] },
   { to: '/orders', label: 'orders', icon: 'shopping-cart', roles: ['admin', 'sales'] },
   { to: '/chat', label: 'chat', icon: 'messages-square', roles: ['admin', 'sales'] },
+  { to: '/support-summary', label: 'support summary', icon: 'life-buoy', roles: ['admin'] },
   { to: '/analytics', label: 'analytics', icon: 'chart-column', roles: ['admin'] },
   { to: '/marketing', label: 'marketing', icon: 'badge-percent', roles: ['admin', 'marketing'] },
   { to: '/roles', label: 'roles', icon: 'shield-check', roles: ['admin'] },

@@ -10,15 +10,11 @@ export default function SettingsPage() {
     full_name: '',
     preferred_language: 'en',
     avatar_url: '',
-    theme: 'light',
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { pushToast, language: currentLanguage, setLanguage, theme: currentTheme, setTheme: setGlobalTheme } = useUiStore();
+  const { pushToast, language: currentLanguage, setLanguage } = useUiStore();
 
-  useEffect(() => {
-    setFormData((prev) => ({ ...prev, theme: currentTheme }));
-  }, [currentTheme]);
 
   useEffect(() => {
     fetchCurrentProfile().then((data) => {
@@ -43,7 +39,6 @@ export default function SettingsPage() {
       });
       
       setLanguage(formData.preferred_language);
-      setGlobalTheme(formData.theme);
       
       pushToast({ tone: 'success', message: t('success', currentLanguage) || 'Settings updated successfully' });
     } catch (error) {
@@ -161,17 +156,6 @@ export default function SettingsPage() {
                 >
                   <option value="en">{t('english', currentLanguage)}</option>
                   <option value="ar">{t('arabic', currentLanguage)}</option>
-                </select>
-              </div>
-
-              <div className="form-field">
-                <label><Palette size={14} /> {t('theme', currentLanguage)}</label>
-                <select 
-                  value={formData.theme} 
-                  onChange={(e) => setFormData(p => ({ ...p, theme: e.target.value }))}
-                >
-                  <option value="light">{t('light', currentLanguage)}</option>
-                  <option value="dark">{t('dark', currentLanguage)}</option>
                 </select>
               </div>
             </div>

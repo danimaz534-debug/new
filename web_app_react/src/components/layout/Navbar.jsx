@@ -1,4 +1,4 @@
-import { Bell, Menu, Moon, Sun, Trash2 } from "lucide-react";
+import { Bell, Menu, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { clearAllNotifications, fetchCurrentProfile, fetchNotifications, markNotificationRead } from "../../lib/api";
 import { getRoleLabel } from "../../lib/roles";
@@ -9,8 +9,6 @@ import { t } from "../../lib/i18n";
 export default function Navbar() {
   const { user, role, signOut } = useAuthStore();
   const {
-    theme,
-    toggleTheme,
     openMobileSidebar,
     pushToast,
     language,
@@ -38,10 +36,11 @@ export default function Navbar() {
     if (!notification.is_read) {
       try {
         await markNotificationRead(notification.id);
+        // Update local state immediately
         setNotifications((current) =>
           current.map((item) =>
-            item.id === notification.id ? { ...item, is_read: true } : item,
-          ),
+            item.id === notification.id ? { ...item, is_read: true } : item
+          )
         );
       } catch (error) {
         pushToast({ tone: "danger", message: error.message });
@@ -60,6 +59,17 @@ export default function Navbar() {
     }
   };
 
+  // Refetch notifications periodically to sync read status
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const data = await fetchNotifications();
+        setNotifications(data);
+      } catch (e) {}
+    }, 30000); // Refetch every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -74,15 +84,6 @@ export default function Navbar() {
       </div>
 
       <div className="topbar-right">
-        <button
-          className="icon-button"
-          type="button"
-          onClick={toggleTheme}
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-
         <div className="notification-wrap">
           <button
             className="icon-button"

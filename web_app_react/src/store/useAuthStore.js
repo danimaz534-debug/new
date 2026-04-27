@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { ensureProfile, fetchCurrentProfile, touchStaffPresence } from "../lib/commerce";
+import { ensureProfile, fetchCurrentProfile, touchStaffPresence } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import { isStaffRole } from "../lib/roles";
 
@@ -13,10 +13,8 @@ const useAuthStore = create((set, get) => ({
   async checkSession() {
     if (get().isChecking) return;
 
-    console.log("[checkSession] Starting session check");
     try {
       if (!supabase) {
-        console.error("[checkSession] Supabase is not configured");
         set({
           user: null,
           role: "guest",
@@ -33,20 +31,12 @@ const useAuthStore = create((set, get) => ({
         error,
       } = await supabase.auth.getSession();
 
-      console.log("[checkSession] Session retrieved:", {
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        userId: session?.user?.id,
-      });
-
       if (error) {
-        console.error("[checkSession] Error getting session:", error);
         set({ isLoading: false, isChecking: false, error: error.message });
         return;
       }
 
       if (!session?.user) {
-        console.log("[checkSession] No session found, setting user to guest");
         set({
           user: null,
           role: "guest",

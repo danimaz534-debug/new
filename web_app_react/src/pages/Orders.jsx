@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchOrders, subscribeToTables, updateOrder } from '../lib/commerce';
+import { fetchOrders, subscribeToTables, updateOrder } from '../lib/api';
 import { PageHeader, SectionCard } from '../components/ui/SectionCard';
 import useUiStore from '../store/useUiStore';
 import { t } from '../lib/i18n';

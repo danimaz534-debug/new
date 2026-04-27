@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import useUiStore from '../store/useUiStore';
@@ -7,7 +8,7 @@ import { t } from '../lib/i18n';
 export default function AuthPage() {
   const { user, signIn, error, isLoading, checkSession } = useAuthStore();
   const { language } = useUiStore();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '', showPassword: false });
   const [localError, setLocalError] = useState('');
   const navigate = useNavigate();
 
@@ -81,17 +82,27 @@ export default function AuthPage() {
           
           <label>
             <span>{t('password', language)}</span>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(event) => {
-                setForm((current) => ({ ...current, password: event.target.value }));
-                setLocalError('');
-              }}
-              placeholder={t('signInToContinue', language)}
-              disabled={isLoading}
-              autoComplete="current-password"
-            />
+            <div className="password-field">
+              <input
+                type={form.showPassword ? 'text' : 'password'}
+                value={form.password}
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, password: event.target.value }));
+                  setLocalError('');
+                }}
+                placeholder={t('signInToContinue', language)}
+                disabled={isLoading}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="icon-button small"
+                onClick={() => setForm((current) => ({ ...current, showPassword: !current.showPassword }))}
+                aria-label={form.showPassword ? 'Hide password' : 'Show password'}
+              >
+                {form.showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </label>
           
           {displayError && (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchUsers, subscribeToTables } from '../lib/commerce';
+import { fetchUsers, subscribeToTables } from '../lib/api';
 import { PageHeader, SectionCard } from '../components/ui/SectionCard';
 
 const ROLE_INFO = {

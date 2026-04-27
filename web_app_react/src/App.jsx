@@ -12,7 +12,8 @@ import UsersPage from './pages/Users';
 import AnalyticsPage from './pages/Analytics';
 import RolesPage from './pages/Roles';
 import SettingsPage from './pages/Settings';
-import { touchStaffPresence } from './lib/commerce';
+import SupportSummary from './pages/SupportSummary';
+import { touchStaffPresence } from './lib/api';
 import { canAccess, isStaffRole } from './lib/roles';
 import useAuthStore from './store/useAuthStore';
 import useUiStore from './store/useUiStore';
@@ -64,6 +65,11 @@ export default function App() {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = language;
   }, [language]);
+
+  const theme = useUiStore((state) => state.theme);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!user?.id || !isStaffRole(role)) {
@@ -119,6 +125,7 @@ export default function App() {
           <Route path="analytics" element={<ProtectedRoute roles={['admin']}><AnalyticsPage /></ProtectedRoute>} />
           <Route path="marketing" element={<ProtectedRoute roles={['admin', 'marketing']}><MarketingPage /></ProtectedRoute>} />
           <Route path="roles" element={<ProtectedRoute roles={['admin']}><RolesPage /></ProtectedRoute>} />
+          <Route path="support-summary" element={<ProtectedRoute roles={['admin']}><SupportSummary /></ProtectedRoute>} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

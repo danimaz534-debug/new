@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { deleteProductComment, fetchProductComments, subscribeToTables } from '../lib/commerce';
+import { deleteProductComment, verifyProductComment, unverifyProductComment, togglePurchaseVerified, fetchProductComments, subscribeToTables } from '../lib/api';
 import { PageHeader, SectionCard } from '../components/ui/SectionCard';
 import useUiStore from '../store/useUiStore';
 
@@ -59,6 +59,36 @@ export default function ReviewsPage() {
     }
   };
 
+  const handleVerify = async (id) => {
+    try {
+      await verifyProductComment(id);
+      setComments((prev) => prev.map((c) => c.id === id ? { ...c, is_verified: true } : c));
+      pushToast({ tone: 'success', message: 'Review verified.' });
+    } catch (err) {
+      pushToast({ tone: 'danger', message: err.message });
+    }
+  };
+
+  const handleUnverify = async (id) => {
+    try {
+      await unverifyProductComment(id);
+      setComments((prev) => prev.map((c) => c.id === id ? { ...c, is_verified: false } : c));
+      pushToast({ tone: 'success', message: 'Review unverified.' });
+    } catch (err) {
+      pushToast({ tone: 'danger', message: err.message });
+    }
+  };
+
+  const handleTogglePurchase = async (id) => {
+    try {
+      const result = await togglePurchaseVerified(id);
+      setComments((prev) => prev.map((c) => c.id === id ? { ...c, is_verified_purchase: result.is_verified_purchase } : c));
+      pushToast({ tone: 'success', message: `Purchase ${result.is_verified_purchase ? 'verified' : 'unverified'}.` });
+    } catch (err) {
+      pushToast({ tone: 'danger', message: err.message });
+    }
+  };
+
   const StarRating = ({ rating }) => (
     <span className="star-rating" aria-label={`${rating} out of 5 stars`}>
       {[1, 2, 3, 4, 5].map((star) => (
@@ -108,7 +138,8 @@ export default function ReviewsPage() {
                   <th>Rating</th>
                   <th>Title</th>
                   <th>Comment</th>
-                  <th>Verified</th>
+                  <th>Purchase Verified</th>
+                  <th>Admin Verified</th>
                   <th>Date</th>
                   <th></th>
                 </tr>
@@ -147,13 +178,48 @@ export default function ReviewsPage() {
                     </td>
                     <td>
                       {comment.is_verified_purchase ? (
-                        <span className="badge badge-success">Verified</span>
+                        <button
+                          className="ghost-button small"
+                          onClick={() => handleTogglePurchase(comment.id)}
+                          title="Unmark as purchase verified"
+                        >
+                          Verified
+                        </button>
                       ) : (
-                        <span className="badge badge-neutral">—</span>
+                        <button
+                          className="ghost-button small"
+                          onClick={() => handleTogglePurchase(comment.id)}
+                          title="Mark as purchase verified"
+                        >
+                          Not Verified
+                        </button>
+                      )}
+                    </td>
+                    <td>
+                      {comment.is_verified ? (
+                        <button
+                          className="ghost-button small"
+                          onClick={() => handleUnverify(comment.id)}
+                          title="Unverify review"
+                        >
+                          Unverify
+                        </button>
+                      ) : (
+                        <button
+                          className="ghost-button small"
+                          onClick={() => handleVerify(comment.id)}
+                          title="Verify review"
+                        >
+                          Verify
+                        </button>
                       )}
                     </td>
                     <td className="date-cell">
-                      {new Date(comment.created_at).toLocaleDateString()}
+                      {new Date(comment.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
                     </td>
                     <td>
                       <button

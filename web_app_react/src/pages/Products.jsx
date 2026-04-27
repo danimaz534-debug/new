@@ -6,7 +6,22 @@ import { fetchFavoriteCountsByProduct } from '../lib/api/favorites';
 import { supabase } from '../lib/supabase';
 import useUiStore from '../store/useUiStore';
 import { t } from '../lib/i18n';
-import { Heart } from 'lucide-react';
+import { Heart, Search } from 'lucide-react';
+
+// Helper to highlight matching text
+function highlightText(text, query) {
+  if (!query || !text) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+  const parts = text.split(regex);
+  return parts.map((part, i) => 
+    regex.test(part) ? (
+      <mark key={i} style={{ background: 'var(--primary)', color: 'var(--accent-text)', padding: '0 2px', borderRadius: '2px' }}>{part}</mark>
+    ) : (
+      part
+    )
+  );
+}
 
 const emptyForm = {
   name: '',
@@ -32,7 +47,7 @@ export default function ProductsPage() {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [favCounts, setFavCounts] = useState({});
-  const { searchQuery, pushToast, language } = useUiStore();
+  const { searchQuery, setSearchQuery, pushToast, language } = useUiStore();
 
   // Fetch favorite counts for all products (admin analytics)
   useEffect(() => {
@@ -117,6 +132,27 @@ export default function ProductsPage() {
         actions={<button className="primary-button" type="button" onClick={() => { setEditing(emptyForm); setOpen(true); }}>{t('addProduct', language)}</button>}
       />
 
+      <div className="search-bar" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'center' }}>
+        <div className="search-input-wrapper" style={{ position: 'relative', width: '100%', maxWidth: '600px' }}>
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-soft)' }} />
+          <input
+            type="text"
+            placeholder={t('searchProducts', language) || 'Search products by name, brand, or category...'}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px 12px 10px 36px',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-elevated)',
+              color: 'var(--text)',
+              fontSize: '0.9rem'
+            }}
+          />
+        </div>
+      </div>
+
       <SectionCard title={t('catalog', language)} subtitle={t('gridCards', language)}>
         <div className="product-grid">
           {filteredProducts.map((product) => (
@@ -134,7 +170,7 @@ export default function ProductsPage() {
                     justifyContent: 'center',
                     height: '100%',
                     background: 'var(--bg-muted)',
-                    color: 'var(--text-faint)',
+                    color: 'var(--text-soft)',
                     fontSize: '2rem'
                   }}>
                     {product.name?.[0]?.toUpperCase() || '?'}
@@ -144,9 +180,9 @@ export default function ProductsPage() {
               <div className="product-body">
                 <div className="product-heading">
                   <div>
-                    <span className="eyebrow">{product.category}</span>
-                    <h3>{product.name}</h3>
-                    <p>{product.brand}</p>
+                    <span className="eyebrow">{highlightText(product.category, searchQuery)}</span>
+                    <h3>{highlightText(product.name, searchQuery)}</h3>
+                    <p>{highlightText(product.brand, searchQuery)}</p>
                   </div>
                   <span
                     className="favorite-count-badge"
@@ -170,15 +206,24 @@ export default function ProductsPage() {
                     {favCounts[product.id] || 0}
                   </span>
                 </div>
-                <div>
-                  <strong>
-                    {calculateDiscountedPrice(product.price, product.discount_percent)}
-                  </strong>
+                <div className="product-price-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
                   {product.discount_percent > 0 && (
-                    <small style={{ textDecoration: 'line-through', color: 'var(--text-faint)', fontSize: '0.8rem' }}>
-                      {Number(product.price).toFixed(2)}
-                    </small>
+                    <span style={{ 
+                      fontSize: '0.8rem', 
+                      fontWeight: '900', 
+                      color: 'var(--accent-text, #000)', 
+                      background: 'var(--accent)', 
+                      padding: '4px 10px',
+                      borderRadius: '20px',
+                      letterSpacing: '0.5px',
+                      textTransform: 'uppercase'
+                    }}>
+                      {product.discount_percent}% OFF
+                    </span>
                   )}
+                  <strong style={{ fontSize: '1.2rem', color: 'var(--text)', fontWeight: '800' }}>
+                    ${calculateDiscountedPrice(product.price, product.discount_percent)}
+                  </strong>
                 </div>
                 <div className="tag-row">
                   {(product.tags ?? []).map((tag) => <span key={tag} className="tag">{tag}</span>)}

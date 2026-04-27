@@ -6,6 +6,7 @@ import {
   deleteChatMessages,
   subscribeToTables,
 } from "../lib/api";
+import { activityLabel, activityStatus } from "../lib/api/client";
 import { PageHeader, SectionCard } from "../components/ui/SectionCard";
 import useUiStore from "../store/useUiStore";
 import { t } from "../lib/i18n";
@@ -53,6 +54,20 @@ function statusCopy(thread, latestMessage, now, language = 'en') {
     tone: "success",
     helper: "Latest response came from sales or AI.",
   };
+}
+
+// Helper to render online status or last seen
+function renderOnlineStatus(lastSeenAt) {
+  const status = activityStatus(lastSeenAt);
+  if (status === 'Active') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+        Online
+      </div>
+    );
+  }
+  return activityLabel(lastSeenAt);
 }
 
 export default function ChatPage() {
@@ -213,11 +228,34 @@ export default function ChatPage() {
           </div>
           <div className="chat-column enhanced">
             <div className="chat-column-head">
-              <div>
-                <strong>
-                  {activeConversation?.profiles?.full_name ?? t('selectThread', language)}
-                </strong>
-                <span>{activeConversation?.profiles?.email ?? t('noEmail', language)}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {activeConversation && (
+                  <div className="avatar-small" style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--bg)',
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem'
+                  }}>
+                    {(activeConversation.profiles?.full_name?.[0] || activeConversation.profiles?.email?.[0] || '?').toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <strong>
+                    {activeConversation?.profiles?.full_name ?? t('selectThread', language)}
+                  </strong>
+                  <span>{activeConversation?.profiles?.email ?? t('noEmail', language)}</span>
+                  {activeConversation?.profiles?.last_seen_at && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {renderOnlineStatus(activeConversation.profiles.last_seen_at)}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="chat-head-meta">
                 {activeConversation && (
