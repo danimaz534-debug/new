@@ -15,14 +15,18 @@ const getStoredLanguage = () => {
 };
 
 const useUiStore = create((set) => ({
-  theme: 'dark',
+  theme: getStoredTheme(),
   language: getStoredLanguage(),
   sidebarCollapsed: false,
   mobileSidebarOpen: false,
   searchQuery: '',
   toasts: [],
   setTheme(theme) {
-    set({ theme: 'dark' });
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('dashboard-theme', theme);
+      document.documentElement.dataset.theme = theme;
+    }
+    set({ theme });
   },
   setLanguage(language) {
     if (typeof window !== 'undefined') {

@@ -13,7 +13,7 @@ export default function SettingsPage() {
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { pushToast, language: currentLanguage, setLanguage } = useUiStore();
+  const { pushToast, language: currentLanguage, setLanguage, theme, setTheme } = useUiStore();
 
 
   useEffect(() => {
@@ -157,6 +157,27 @@ export default function SettingsPage() {
                   <option value="en">{t('english', currentLanguage)}</option>
                   <option value="ar">{t('arabic', currentLanguage)}</option>
                 </select>
+              </div>
+              <div className="form-field">
+                <label><Palette size={14} /> Theme</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className={`${theme === 'dark' ? 'primary-button' : 'ghost-button'}`}
+                    onClick={() => setTheme('dark')}
+                    style={{ flex: 1 }}
+                  >
+                    Dark
+                  </button>
+                  <button
+                    type="button"
+                    className={`${theme === 'light' ? 'primary-button' : 'ghost-button'}`}
+                    onClick={() => setTheme('light')}
+                    style={{ flex: 1 }}
+                  >
+                    Light
+                  </button>
+                </div>
               </div>
             </div>
           </div>
