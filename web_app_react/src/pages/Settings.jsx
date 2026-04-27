@@ -171,8 +171,8 @@ export default function SettingsPage() {
                   value={formData.preferred_theme} 
                   onChange={(e) => setFormData(p => ({ ...p, preferred_theme: e.target.value }))}
                 >
-                  <option value="dark">Dark</option>
-                  <option value="light">Light</option>
+                  <option value="dark">{t('dark', currentLanguage)}</option>
+                  <option value="light">{t('light', currentLanguage)}</option>
                 </select>
               </div>
             </div>
