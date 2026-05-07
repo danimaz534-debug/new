@@ -6,6 +6,7 @@ class AppUser {
     required this.role,
     required this.isBlocked,
     required this.preferredLanguage,
+    this.avatarUrl,
     required this.createdAt,
   });
 
@@ -15,10 +16,12 @@ class AppUser {
   final String role;
   final bool isBlocked;
   final String preferredLanguage;
+  final String? avatarUrl;
   final DateTime? createdAt;
 
   bool get isWholesale => role == 'wholesale';
   bool get isRetail => role == 'retail';
+  bool get isAdmin => role == 'admin' || role == 'superuser';
   String get displayName => fullName.trim().isEmpty ? email : fullName;
   String get shortRole => role[0].toUpperCase() + role.substring(1);
 
@@ -30,6 +33,7 @@ class AppUser {
       role: (map['role'] ?? 'retail').toString(),
       isBlocked: map['is_blocked'] == true,
       preferredLanguage: (map['preferred_language'] ?? 'en').toString(),
+      avatarUrl: map['avatar_url']?.toString(),
       createdAt: map['created_at'] == null
           ? null
           : DateTime.tryParse(map['created_at'].toString()),

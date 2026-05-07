@@ -112,6 +112,18 @@ class AuthService {
     }
   }
 
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } catch (e) {
+      throw AuthException(
+        message: 'Failed to update password. Please try again.',
+      );
+    }
+  }
+
   String _mapAuthError(String message) {
     final lowerMessage = message.toLowerCase();
     

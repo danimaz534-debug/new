@@ -4,6 +4,7 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
   full_name text,
+  avatar_url text,
   role text not null default 'retail',
   is_blocked boolean not null default false,
   preferred_language text not null default 'en',
@@ -121,6 +122,17 @@ create table if not exists public.chat_messages (
   sender_type text not null check (sender_type in ('user', 'sales', 'ai')),
   message text not null,
   created_at timestamptz not null default now()
+);
+
+create table if not exists public.chat_summaries (
+  id uuid primary key default gen_random_uuid(),
+  thread_id uuid not null references public.chat_threads(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  issue_description text not null,
+  resolution_status text not null default 'Pending',
+  resolved_by uuid references public.profiles(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create or replace function public.current_role()
@@ -368,6 +380,7 @@ alter table public.reviews enable row level security;
 alter table public.notifications enable row level security;
 alter table public.chat_threads enable row level security;
 alter table public.chat_messages enable row level security;
+alter table public.chat_summaries enable row level security;
 alter table public.wholesale_codes enable row level security;
 
 drop policy if exists "products are public readable" on public.products;
@@ -459,6 +472,11 @@ create policy "sales read wholesale codes" on public.wholesale_codes for select 
 create policy "sales create wholesale codes" on public.wholesale_codes for insert with check (public.current_role() in ('admin', 'sales'));
 create policy "wholesale code redeemer update" on public.wholesale_codes for update using (public.current_role() in ('admin', 'sales') or redeemed_by = auth.uid()) with check (public.current_role() in ('admin', 'sales') or redeemed_by = auth.uid());
 
+drop policy if exists "chat summaries access" on public.chat_summaries;
+create policy "chat summaries access" on public.chat_summaries for select using (public.current_role() in ('admin', 'sales') or user_id = auth.uid());
+create policy "chat summaries update" on public.chat_summaries for update using (public.current_role() in ('admin', 'sales') or user_id = auth.uid()) with check (public.current_role() in ('admin', 'sales') or user_id = auth.uid());
+
 comment on table public.profiles is 'Unified user table for retail, wholesale, admin, sales, and marketing roles.';
 comment on table public.chat_messages is 'Realtime conversation records between users, sales agents, and AI fallback.';
+comment on table public.chat_summaries is 'AI-generated or sales-generated summaries of issues for admins.';
 

@@ -27,6 +27,14 @@ class Review {
         ? Map<String, dynamic>.from(profile)
         : <String, dynamic>{};
 
+    final fullName = profileMap['full_name']?.toString().trim();
+    final email = profileMap['email']?.toString().trim();
+    final reviewerName = (fullName != null && fullName.isNotEmpty)
+        ? fullName
+        : (email != null && email.isNotEmpty)
+            ? email.split('@').first
+            : 'Anonymous';
+
     return Review(
       id: map['id'].toString(),
       userId: (map['user_id'] ?? '').toString(),
@@ -36,7 +44,7 @@ class Review {
       createdAt: map['created_at'] == null
           ? null
           : DateTime.tryParse(map['created_at'].toString()),
-      reviewerName: (profileMap['full_name'] ?? '').toString(),
+      reviewerName: reviewerName,
       reviewerEmail: (profileMap['email'] ?? '').toString(),
     );
   }

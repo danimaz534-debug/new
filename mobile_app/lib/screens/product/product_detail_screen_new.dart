@@ -394,7 +394,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   const SizedBox(height: 24),
                   Text(
-                    appState.text(en: 'Reviews', ar: 'المراجعات'),
+                    appState.text(en: 'Reviews', ar: 'التقييمات'),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -402,14 +402,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   const SizedBox(height: 8),
                   if (reviews.isNotEmpty)
                     Text(
-                      '${reviews.length} ${appState.text(en: 'reviews', ar: 'مراجعات')}',
+                      '${reviews.length} ${appState.text(en: 'reviews', ar: 'تقييمات')}',
                       style: TextStyle(color: Colors.grey.shade500),
                     )
                   else
                     Text(
                       appState.text(
                         en: 'No reviews yet. Be the first to review!',
-                        ar: 'لا توجد مراجعات بعد. كن أول من يراجع!',
+                        ar: 'لا توجد تقييمات بعد. كن أول من يُقيّم!',
                       ),
                       style: TextStyle(
                         color: Colors.grey.shade500,
@@ -424,7 +424,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       icon: const Icon(Icons.rate_review, size: 20),
                       label: Text(appState.text(
                         en: 'Add Your Review',
-                        ar: 'أضف مراجعتك',
+                        ar: 'أضف تقييمك',
                       )),
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -440,7 +440,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Text(
                 appState.text(
                   en: 'No reviews yet.',
-                  ar: 'لا توجد مراجعات بعد.',
+                  ar: 'لا توجد تقييمات بعد.',
                 ),
                 style: TextStyle(color: Colors.grey.shade600),
               )

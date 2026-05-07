@@ -31,6 +31,14 @@ class ProductComment {
         ? Map<String, dynamic>.from(profile)
         : <String, dynamic>{};
 
+    final fullName = profileMap['full_name']?.toString().trim();
+    final email = profileMap['email']?.toString().trim();
+    final reviewerName = (fullName != null && fullName.isNotEmpty)
+        ? fullName
+        : (email != null && email.isNotEmpty)
+            ? email.split('@').first
+            : 'Anonymous';
+
     return ProductComment(
       id: (map['id'] ?? '').toString(),
       userId: (map['user_id'] ?? '').toString(),
@@ -43,7 +51,7 @@ class ProductComment {
       createdAt: map['created_at'] == null
           ? DateTime.now()
           : DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now(),
-      reviewerName: (profileMap['full_name'] ?? 'Anonymous').toString(),
+      reviewerName: reviewerName,
     );
   }
 

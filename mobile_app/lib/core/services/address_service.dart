@@ -45,7 +45,10 @@ class AddressService {
 
       final response = await _client
           .from('user_addresses')
-          .insert(address.toMap())
+          .insert({
+            ...address.toMap(includeId: false),
+            'user_id': _client.auth.currentUser!.id,
+          })
           .select()
           .single();
 

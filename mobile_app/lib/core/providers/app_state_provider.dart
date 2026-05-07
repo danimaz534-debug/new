@@ -84,6 +84,9 @@ class AppStateProvider extends ChangeNotifier {
   bool _checkoutLoading = false;
   bool _chatLoading = false;
   bool _isDisposed = false;
+  bool _isPreparingChat = false;
+  bool _isBlocked = false;
+  DateTime? _lastChatViewedAt;
   String? _lastError;
 
   User? _authUser;
@@ -119,6 +122,8 @@ class AppStateProvider extends ChangeNotifier {
   bool get isAuthenticated => _authUser != null;
   bool get isGuest => _authUser == null;
   bool get isWholesale => _profile?.isWholesale ?? false;
+  bool get isAdmin => _profile?.isAdmin ?? false;
+  bool get isBlocked => _isBlocked;
   User? get authUser => _authUser;
   AppUser? get profile => _profile;
   AppUser? get currentUser => profile;
@@ -135,7 +140,11 @@ class AppStateProvider extends ChangeNotifier {
   List<Product> get products => List.unmodifiable(_products);
   List<CartEntry> get cartItems => List.unmodifiable(_cartItems);
   List<CartEntry> get cartEntries => cartItems; // Alias for cartItems
+  List<CartEntry> get cart => cartItems;
   Set<String> get favoriteIds => Set.unmodifiable(_favoriteIds);
+
+  Map<String, int> _favoriteCounts = {};
+  Map<String, int> get favoriteCounts => Map.unmodifiable(_favoriteCounts);
   List<OrderSummary> get orders => List.unmodifiable(_orders);
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
   List<Product> get watchHistory => List.unmodifiable(_watchHistory);
@@ -143,6 +152,23 @@ class AppStateProvider extends ChangeNotifier {
   List<ChatMessage> get chatMessages => List.unmodifiable(_chatMessages);
   List<UserAddress> get userAddresses => List.unmodifiable(_userAddresses);
   UserAddress? get defaultAddress => _defaultAddress;
+
+  bool get isAiModeActive => _chatThread?.aiModeActive ?? false;
+  bool get isAwaitingAdminResponse => _chatThread?.awaitingAdminResponse ?? false;
+
+  int get unreadChatCount {
+    if (_lastChatViewedAt == null) {
+      return _chatMessages.where((m) => m.senderType != 'user').length;
+    }
+    return _chatMessages
+        .where(
+          (m) =>
+              m.senderType != 'user' &&
+              m.createdAt != null &&
+              m.createdAt!.isAfter(_lastChatViewedAt!),
+        )
+        .length;
+  }
 
   List<String> get availableBrands => [
         'All',
@@ -428,19 +454,33 @@ class AppStateProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> prepareChat() async {
-    await _requireAuthenticated();
-    _chatLoading = true;
-    _safeNotify();
+  Future<void> prepareChat({
+    bool showLoader = true,
+    bool markAsRead = false,
+  }) async {
+    if (_isPreparingChat) return;
+    _isPreparingChat = true;
 
     try {
+      await _requireAuthenticated();
+      if (showLoader) {
+        _chatLoading = true;
+        _safeNotify();
+      }
+
       await _ensureProfile();
       _chatThread = await _chatService.ensureThread();
       if (_chatThread != null) {
         _chatMessages = await _chatService.fetchMessages(_chatThread!.id);
+        if (markAsRead) {
+          _lastChatViewedAt = DateTime.now();
+        }
       }
     } finally {
-      _chatLoading = false;
+      _isPreparingChat = false;
+      if (showLoader) {
+        _chatLoading = false;
+      }
       _safeNotify();
     }
   }
@@ -460,6 +500,18 @@ class AppStateProvider extends ChangeNotifier {
     await _chatService.sendMessage(threadId: thread.id, message: trimmed);
     _chatMessages = await _chatService.fetchMessages(thread.id);
     _safeNotify();
+    if (thread.aiModeActive) {
+      unawaited(_chatService.triggerAiResponse(thread.id));
+    }
+  }
+
+  void markChatAsRead() {
+    _lastChatViewedAt = DateTime.now();
+    _safeNotify();
+  }
+
+  void clearBlockedFlag() {
+    _isBlocked = false;
   }
 
   Future<void> redeemWholesaleCode(String code) async {
@@ -505,6 +557,17 @@ class AppStateProvider extends ChangeNotifier {
     if (!isAuthenticated) return;
     await _historyService.recordView(product.id);
     _watchHistory = await _historyService.fetchHistory();
+    _safeNotify();
+  }
+
+  Future<void> changePassword(String newPassword) async {
+    await _requireAuthenticated();
+    await _authService.updatePassword(newPassword);
+  }
+
+  Future<void> updateAvatar(String avatarUrl) async {
+    await _requireAuthenticated();
+    _profile = await _profileService.updateAvatar(avatarUrl);
     _safeNotify();
   }
 
@@ -646,11 +709,14 @@ class AppStateProvider extends ChangeNotifier {
       _profile = null;
       _cartItems = [];
       _favoriteIds = <String>{};
+      _favoriteCounts = {};
       _orders = [];
       _notifications = [];
       _watchHistory = [];
+      _isBlocked = false;
       _chatThread = null;
       _chatMessages = [];
+      _lastChatViewedAt = null;
       _attachRealtimeSubscriptions();
       _safeNotify();
       return;

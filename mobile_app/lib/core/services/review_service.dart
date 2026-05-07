@@ -115,6 +115,7 @@ class ReviewService {
           .maybeSingle();
 
       Map<String, dynamic> data = {
+        'user_id': userId,
         'product_id': productId,
         'rating': rating,
         'title': title,

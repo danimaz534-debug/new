@@ -50,17 +50,27 @@ class NotificationHandler {
   void _subscribeToNotifications() {
     if (_currentUserId == null) return;
 
-    // Use Supabase Realtime to listen for notifications
-    _notificationsChannel = _client.channel('notifications:$_currentUserId');
+    // Use Supabase Realtime to listen for new notifications in the database
+    _notificationsChannel = _client.channel('public:notifications:user_id=eq.$_currentUserId');
     
     _notificationsChannel!
-        .onBroadcast(event: 'notification', callback: (payload) {
-          debugPrint('Received notification: $payload');
-          _notifyListeners(payload);
-        })
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: _currentUserId,
+          ),
+          callback: (payload) {
+            debugPrint('Received database notification: ${payload.newRecord}');
+            _notifyListeners(Map<String, dynamic>.from(payload.newRecord));
+          },
+        )
         .subscribe();
 
-    debugPrint('Subscribed to notifications for user: $_currentUserId');
+    debugPrint('Subscribed to Postgres changes for notifications: $_currentUserId');
   }
 
   Future<void> fetchPendingNotifications() async {

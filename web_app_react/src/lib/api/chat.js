@@ -3,7 +3,6 @@ import { requireClient, withRetry } from "./client";
 export async function fetchChatThreads() {
   return withRetry(async () => {
     const client = requireClient();
-    // Fetch threads with latest message info for sorting
     const { data, error } = await client
       .from("chat_threads")
       .select(`
@@ -17,34 +16,30 @@ export async function fetchChatThreads() {
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) throw error;
-    
-    // Process threads to get latest message info
+
     const threadsWithLatest = (data ?? []).map(thread => {
       const messages = thread.chat_messages || [];
-      const latestMessage = messages.length > 0 
+      const latestMessage = messages.length > 0
         ? messages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
         : null;
-      
+
       return {
         ...thread,
         latest_message_at: latestMessage?.created_at || thread.created_at,
         latest_sender_type: latestMessage?.sender_type || null,
       };
     });
-    
-    // Sort: threads with user messages (awaiting reply) first, then by latest activity
+
     threadsWithLatest.sort((a, b) => {
       const aIsUserMessage = a.latest_sender_type === 'user';
       const bIsUserMessage = b.latest_sender_type === 'user';
-      
-      // Prioritize threads with user messages
+
       if (aIsUserMessage && !bIsUserMessage) return -1;
       if (!aIsUserMessage && bIsUserMessage) return 1;
-      
-      // Then sort by latest activity
+
       return new Date(b.latest_message_at) - new Date(a.latest_message_at);
     });
-    
+
     return threadsWithLatest;
   });
 }
@@ -81,6 +76,8 @@ export async function sendSalesMessage(threadId, message) {
     .update({
       assigned_sales_id: user?.id ?? null,
       last_sales_reply_at: new Date().toISOString(),
+      ai_mode_active: false,
+      awaiting_admin_response: false,
     })
     .eq("id", threadId);
 }
@@ -88,13 +85,11 @@ export async function sendSalesMessage(threadId, message) {
 export async function deleteChatMessages(threadId) {
   const client = requireClient();
 
-  // Check if current user is admin or sales
   const { data: { user }, error: userError } = await client.auth.getUser();
   if (userError || !user) {
     throw new Error("Not authenticated. Please sign in again.");
   }
 
-  // Call Edge Function to delete messages (uses service role key)
   try {
     const { data, error } = await client.functions.invoke('delete-chat-messages', {
       body: {

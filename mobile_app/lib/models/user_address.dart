@@ -40,9 +40,8 @@ class UserAddress {
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+  Map<String, dynamic> toMap({bool includeId = true}) {
+    final map = {
       'label': label,
       'full_name': fullName,
       'phone': phone,
@@ -52,6 +51,10 @@ class UserAddress {
       'notes': notes,
       'is_default': isDefault,
     };
+    if (includeId && id.isNotEmpty) {
+      map['id'] = id;
+    }
+    return map;
   }
 
   UserAddress copyWith({

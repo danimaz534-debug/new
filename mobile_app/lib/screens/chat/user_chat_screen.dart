@@ -23,7 +23,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        await context.read<AppStateProvider>().prepareChat();
+        await context.read<AppStateProvider>().prepareChat(markAsRead: true);
       } catch (_) {
         if (!mounted) return;
         showAppSnackBar(
@@ -60,7 +60,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 120,
+        0,
         duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
       );
@@ -75,11 +75,14 @@ class _UserChatScreenState extends State<UserChatScreen> {
 
     if (messages.length != _lastMessageCount) {
       _lastMessageCount = messages.length;
-      _scrollToBottom();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        appState.markChatAsRead();
+      });
     }
 
-    final lastMessage = messages.isEmpty ? null : messages.last;
+    final lastMessage = messages.isEmpty ? null : messages.first;
     final waitingForSales = lastMessage?.senderType == 'user';
+    final isAiMode = appState.isAiModeActive;
 
     return Scaffold(
       appBar: AppBar(
@@ -106,38 +109,63 @@ class _UserChatScreenState extends State<UserChatScreen> {
                 children: [
                   Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 18,
-                        child: Icon(Icons.support_agent_rounded),
+                        backgroundColor: isAiMode
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
+                            : null,
+                        child: Icon(
+                          isAiMode
+                              ? Icons.smart_toy_rounded
+                              : Icons.support_agent_rounded,
+                          color: isAiMode ? const Color(0xFFF59E0B) : null,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          appState.text(
-                            en: 'Wholesale and order support',
-                            ar: 'دعم الجملة والطلبات',
-                          ),
+                          isAiMode
+                              ? appState.text(
+                                  en: 'AI Assistant Active',
+                                  ar: 'المساعد الذكي نشط',
+                                )
+                              : appState.text(
+                                  en: 'Wholesale and order support',
+                                  ar: 'دعم الجملة والطلبات',
+                                ),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: waitingForSales
-                              ? const Color(0xFFFFEDD5)
-                              : const Color(0xFFDCFCE7),
+                          color: isAiMode
+                              ? const Color(0xFFFEF3C7)
+                              : waitingForSales
+                                  ? const Color(0xFFFFEDD5)
+                                  : const Color(0xFFDCFCE7),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
-                          waitingForSales
-                              ? appState.text(en: 'Waiting reply', ar: 'بانتظار الرد')
-                              : appState.text(en: 'Active', ar: 'نشط'),
+                          isAiMode
+                              ? appState.text(en: 'AI Mode', ar: 'وضع AI')
+                              : waitingForSales
+                                  ? appState.text(
+                                      en: 'Waiting reply',
+                                      ar: 'بانتظار الرد',
+                                    )
+                                  : appState.text(en: 'Active', ar: 'نشط'),
                           style: TextStyle(
-                            color: waitingForSales
-                                ? const Color(0xFFC2410C)
-                                : const Color(0xFF15803D),
+                            color: isAiMode
+                                ? const Color(0xFF92400E)
+                                : waitingForSales
+                                    ? const Color(0xFFC2410C)
+                                    : const Color(0xFF15803D),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -146,10 +174,15 @@ class _UserChatScreenState extends State<UserChatScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    appState.text(
-                      en: 'If sales does not answer within 5 minutes, AI follows up with: "We will contact you shortly".',
-                      ar: 'إذا لم يرد فريق المبيعات خلال 5 دقائق، سيرسل الذكاء الاصطناعي: سنتواصل معك قريبًا.',
-                    ),
+                    isAiMode
+                        ? appState.text(
+                            en: 'AI is responding. A sales agent will join when available.',
+                            ar: 'الذكاء الاصطناعي يرد الآن. سيانضم موظف المبيعات عند التوفر.',
+                          )
+                        : appState.text(
+                            en: 'If sales does not answer within 10 minutes, AI will respond automatically.',
+                            ar: 'إذا لم يرد فريق المبيعات خلال 10 دقائق، سيرد الذكاء الاصطناعي تلقائيًا.',
+                          ),
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
@@ -160,27 +193,35 @@ class _UserChatScreenState extends State<UserChatScreen> {
             child: appState.isChatLoading
                 ? const Center(child: CircularProgressIndicator())
                 : messages.isEmpty
-                ? _ChatEmptyState(appState: appState)
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final message = messages[index];
-                      final showTime = index == messages.length - 1 ||
-                          messages[index + 1].senderType != message.senderType;
-                      return _ChatBubble(message: message, showTime: showTime);
-                    },
-                  ),
+                    ? _ChatEmptyState(appState: appState)
+                    : ListView.builder(
+                        controller: _scrollController,
+                        reverse: true,
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final message = messages[index];
+                          final showTime = index == messages.length - 1 ||
+                              messages[index + 1].senderType !=
+                                  message.senderType;
+                          return _ChatBubble(
+                            message: message,
+                            showTime: showTime,
+                          );
+                        },
+                      ),
           ),
-          if (waitingForSales)
+          if (waitingForSales && !isAiMode)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(14),
@@ -191,6 +232,47 @@ class _UserChatScreenState extends State<UserChatScreen> {
                       ar: 'بانتظار رد فريق المبيعات...',
                     ),
                     style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ),
+            ),
+          if (isAiMode && waitingForSales)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFFF59E0B),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        appState.text(
+                          en: 'AI is typing...',
+                          ar: 'الذكاء الاصطناعي يكتب...',
+                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF92400E),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -305,8 +387,8 @@ class _ChatBubble extends StatelessWidget {
     final bubbleColor = isUser
         ? theme.colorScheme.primary
         : isAI
-        ? const Color(0xFFFFEDD5)
-        : theme.colorScheme.surfaceContainerHighest;
+            ? const Color(0xFFFEF3C7)
+            : theme.colorScheme.surfaceContainerHighest;
 
     final textColor = isUser ? Colors.white : theme.colorScheme.onSurface;
     final align = isUser ? Alignment.centerRight : Alignment.centerLeft;
@@ -322,7 +404,10 @@ class _ChatBubble extends StatelessWidget {
                 isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: bubbleColor,
                   borderRadius: BorderRadius.only(
@@ -333,27 +418,48 @@ class _ChatBubble extends StatelessWidget {
                   ),
                 ),
                 child: Column(
-                  crossAxisAlignment:
-                      isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  crossAxisAlignment: isUser
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isUser
-                          ? 'You'
-                          : isAI
-                          ? 'AI Assistant'
-                          : 'Sales',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: isUser
-                                ? Colors.white.withValues(alpha: 0.72)
-                                : theme.colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isAI) ...[
+                          Icon(
+                            Icons.smart_toy_rounded,
+                            size: 14,
+                            color: const Color(0xFF92400E),
                           ),
+                          const SizedBox(width: 4),
+                        ],
+                        Text(
+                          isUser
+                              ? 'You'
+                              : isAI
+                                  ? 'AI Assistant'
+                                  : 'Sales',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                color: isUser
+                                    ? Colors.white.withValues(alpha: 0.72)
+                                    : isAI
+                                        ? const Color(0xFF92400E)
+                                        : theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
                       message.message,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: textColor,
+                            color: isAI
+                                ? const Color(0xFF78350F)
+                                : textColor,
                             height: 1.45,
                           ),
                     ),

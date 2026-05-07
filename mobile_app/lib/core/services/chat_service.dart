@@ -16,7 +16,6 @@ class ChatService {
       final result = await _client.rpc('ensure_chat_thread');
       return ChatThread.fromMap(Map<String, dynamic>.from(result as Map));
     } catch (e) {
-      // Fallback: create thread directly if RPC doesn't exist
       try {
         final existing = await _client
             .from('chat_threads')
@@ -28,7 +27,6 @@ class ChatService {
           return ChatThread.fromMap(Map<String, dynamic>.from(existing as Map));
         }
 
-        // Create new thread
         final response = await _client
             .from('chat_threads')
             .insert({
@@ -45,12 +43,26 @@ class ChatService {
     }
   }
 
+  Future<ChatThread?> fetchThread(String threadId) async {
+    try {
+      final response = await _client
+          .from('chat_threads')
+          .select('*')
+          .eq('id', threadId)
+          .single();
+      return ChatThread.fromMap(Map<String, dynamic>.from(response as Map));
+    } catch (e) {
+      debugPrint('Error fetching thread: $e');
+      return null;
+    }
+  }
+
   Future<List<ChatMessage>> fetchMessages(String threadId) async {
     final response = await _client
         .from('chat_messages')
         .select('*')
         .eq('thread_id', threadId)
-        .order('created_at');
+        .order('created_at', ascending: false);
 
     return (response as List)
         .map((item) => ChatMessage.fromMap(Map<String, dynamic>.from(item as Map)))
@@ -72,5 +84,16 @@ class ChatService {
       'sender_type': 'user',
       'message': message.trim(),
     });
+  }
+
+  Future<void> triggerAiResponse(String threadId) async {
+    try {
+      await _client.functions.invoke('ai-chat-responder', body: {
+        'action': 'handle_user_message',
+        'thread_id': threadId,
+      });
+    } catch (e) {
+      debugPrint('Error triggering AI response: $e');
+    }
   }
 }

@@ -25,17 +25,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final _reviewTitleController = TextEditingController();
   final _reviewCommentController = TextEditingController();
   bool _isSubmittingReview = false;
+  bool _reviewsLoading = true;
+  String? _reviewsError;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final appState = context.read<AppStateProvider>();
-      appState.loadReviews(widget.product.id);
-      appState.loadProductComments(widget.product.id);
-      appState.loadProductRating(widget.product.id);
-      appState.recordProductView(widget.product);
+      _loadReviewsData();
     });
+  }
+
+  Future<void> _loadReviewsData() async {
+    setState(() {
+      _reviewsLoading = true;
+      _reviewsError = null;
+    });
+
+    try {
+      final appState = context.read<AppStateProvider>();
+      await Future.wait([
+        appState.loadReviews(widget.product.id),
+        appState.loadProductComments(widget.product.id),
+        appState.loadProductRating(widget.product.id),
+      ]);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _reviewsError = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _reviewsLoading = false);
+        context.read<AppStateProvider>().recordProductView(widget.product);
+      }
+    }
   }
 
   @override
@@ -67,10 +90,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(appState.text(
-            en: 'Added to cart',
-            ar: 'تمت الإضافة إلى السلة',
-          )),
+          content: Text(
+            appState.text(en: 'Added to cart', ar: 'تمت الإضافة إلى السلة'),
+          ),
+          backgroundColor: const Color(0xFFD4AF37),
         ),
       );
     }
@@ -85,58 +108,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     await appState.toggleFavorite(widget.product);
   }
 
-  Future<void> _submitReview() async {
-    final appState = context.read<AppStateProvider>();
-    if (appState.isGuest) {
-      widget.onRequireAuth();
-      return;
-    }
-
-    if (_userRating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a rating')),
-      );
-      return;
-    }
-
-    if (_reviewTitleController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a title')),
-      );
-      return;
-    }
-
-    setState(() => _isSubmittingReview = true);
-    try {
-      await appState.submitProductComment(
-        productId: widget.product.id,
-        rating: _userRating,
-        title: _reviewTitleController.text,
-        comment: _reviewCommentController.text,
-      );
-
-      if (mounted) {
-        _reviewTitleController.clear();
-        _reviewCommentController.clear();
-        setState(() => _userRating = 0);
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Review submitted successfully')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmittingReview = false);
-      }
-    }
-  }
-
   void _showReviewModal() {
     final appState = context.read<AppStateProvider>();
     if (appState.isGuest) {
@@ -144,95 +115,162 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
-    _userRating = 0;
-    _reviewTitleController.clear();
-    _reviewCommentController.clear();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: const Color(0xFF1A1A1A),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
           padding: EdgeInsets.fromLTRB(
-            16,
-            16,
-            16,
-            MediaQuery.of(context).viewInsets.bottom + 16,
+            24,
+            24,
+            24,
+            MediaQuery.of(context).viewInsets.bottom + 24,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Write a Review',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                appState.text(en: 'Write a Review', ar: 'اكتب مراجعة'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 16),
-              Text('Rating'),
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
                   5,
                   (index) => GestureDetector(
                     onTap: () => setModalState(() => _userRating = index + 1),
                     child: Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Icon(
-                        index < _userRating ? Icons.star : Icons.star_border,
-                        color: Colors.amber,
-                        size: 32,
+                        index < _userRating
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        color: const Color(0xFFD4AF37),
+                        size: 40,
                       ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               TextField(
                 controller: _reviewTitleController,
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'Review Title',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  labelText: appState.text(
+                    en: 'Review Title',
+                    ar: 'عنوان المراجعة',
                   ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _reviewCommentController,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  labelText: 'Your Review',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  labelStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFD4AF37)),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.grey,
-                      ),
-                      child: const Text('Cancel'),
+              TextField(
+                controller: _reviewCommentController,
+                style: const TextStyle(color: Colors.white),
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: appState.text(en: 'Your Experience', ar: 'تجربتك'),
+                  labelStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.1),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _isSubmittingReview ? null : _submitReview,
-                      child: Text(_isSubmittingReview ? 'Submitting...' : 'Submit Review'),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFD4AF37)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isSubmittingReview
+                      ? null
+                      : () async {
+                          if (_userRating == 0 ||
+                              _reviewTitleController.text.trim().isEmpty) {
+                            return;
+                          }
+                          setModalState(() => _isSubmittingReview = true);
+                          try {
+                            await appState.submitProductComment(
+                              productId: widget.product.id,
+                              rating: _userRating,
+                              title: _reviewTitleController.text.trim(),
+                              comment: _reviewCommentController.text.trim(),
+                            );
+                            _reviewTitleController.clear();
+                            _reviewCommentController.clear();
+                            _userRating = 0;
+                            if (mounted) {
+                              navigator.pop();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    appState.text(
+                                      en: 'Your review has been saved.',
+                                      ar: 'تم حفظ تقييمك.',
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setModalState(() => _isSubmittingReview = false);
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD4AF37),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                ],
-              )
+                  child: Text(
+                    _isSubmittingReview
+                        ? appState.text(
+                            en: 'Submitting...',
+                            ar: 'جاري الإرسال...',
+                          )
+                        : appState.text(en: 'Post Review', ar: 'نشر المراجعة'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -244,310 +282,562 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final appState = context.watch<AppStateProvider>();
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final product = widget.product;
     final isFavorite = appState.favoriteIds.contains(product.id);
-    final reviews = appState.reviewsForProduct(product.id);
+    final comments = appState.getProductComments(product.id);
+    final ratingSummary = appState.getProductRating(product.id);
+    final isAdmin = appState.currentUser?.isAdmin ?? false;
+    final favoriteCount = appState.favoriteCounts[product.id] ?? 0;
 
     final basePrice = product.discountedPrice;
-    final wholesalePrice = appState.isWholesale ? basePrice * 0.85 : basePrice;
+    final hasRetailDiscount = product.discountPercent > 0;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(product.name),
-        actions: [
-          IconButton(
-            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
-            color: isFavorite ? Colors.red : null,
-            onPressed: _toggleFavorite,
-          ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 120),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: AspectRatio(
-                    aspectRatio: 1.2,
-                    child: NetworkProductImage(
-                      imageUrl: product.imageUrl,
-                      borderRadius: BorderRadius.zero,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 400,
+            pinned: true,
+            backgroundColor: theme.scaffoldBackgroundColor,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: scheme.onSurface,
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            actions: [
+              if (isAdmin)
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: scheme.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.favorite_rounded,
+                          color: scheme.primary,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$favoriteCount',
+                          style: TextStyle(
+                            color: scheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                )
+              else
+                IconButton(
+                  icon: Icon(
+                    isFavorite
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    color: isFavorite ? Colors.redAccent : scheme.onSurface,
+                  ),
+                  onPressed: _toggleFavorite,
                 ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Chip(
-                        label: Text(product.brand),
-                        backgroundColor: theme.colorScheme.primaryContainer,
-                      ),
-                      if (product.stock > 0)
-                        Text(
-                          appState.text(
-                            en: 'Stock: ${product.stock}',
-                            ar: 'المخزون: ${product.stock}',
-                          ),
-                          style: TextStyle(
-                            color: product.stock < 5 ? Colors.red : Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      else
-                        Text(
-                          appState.text(
-                            en: 'Out of Stock',
-                            ar: 'نفد من المخزون',
-                          ),
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                    ],
+                  NetworkProductImage(
+                    imageUrl: product.imageUrl,
+                    borderRadius: BorderRadius.zero,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    product.name,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    children: [
-                      Text(
-                        '\$${wholesalePrice.toStringAsFixed(2)}',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (appState.isWholesale)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            appState.text(en: '15% Wholesale Discount', ar: 'خصم الجملة 15٪'),
-                            style: const TextStyle(color: Colors.green, fontSize: 12),
-                          ),
-                        )
-                      else if (product.discountPercent > 0)
-                        Text(
-                          '\$${product.price.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            decoration: TextDecoration.lineThrough,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    appState.text(en: 'Description', ar: 'الوصف'),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    product.description.isEmpty
-                        ? appState.text(
-                            en: 'No description available.',
-                            ar: 'لا يوجد وصف متاح.',
-                          )
-                        : product.description,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    appState.text(en: 'Tags', ar: 'العلامات'),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (product.tags.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: product.tags
-                          .map((tag) => Chip(label: Text(tag)))
-                          .toList(),
-                    )
-                  else
-                    Text(
-                      appState.text(
-                        en: 'No tags available.',
-                        ar: 'لا توجد علامات متاحة.',
-                      ),
-                      style: TextStyle(color: Colors.grey.shade500),
-                    ),
-                  const SizedBox(height: 24),
-                  Text(
-                    appState.text(en: 'Reviews', ar: 'المراجعات'),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (reviews.isNotEmpty)
-                    Text(
-                      '${reviews.length} ${appState.text(en: 'reviews', ar: 'مراجعات')}',
-                      style: TextStyle(color: Colors.grey.shade500),
-                    )
-                  else
-                    Text(
-                      appState.text(
-                        en: 'No reviews yet. Be the first to review!',
-                        ar: 'لا توجد مراجعات بعد. كن أول من يراجع!',
-                      ),
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontSize: 12,
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _showReviewModal,
-                      icon: const Icon(Icons.rate_review, size: 20),
-                      label: Text(appState.text(
-                        en: 'Add Your Review',
-                        ar: 'أضف مراجعتك',
-                      )),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        backgroundColor: theme.colorScheme.primary,
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.black54,
+                          Colors.transparent,
+                          Color(0xFF0A0A0A),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: [0.0, 0.5, 1.0],
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            if (reviews.isEmpty)
-              Text(
-                appState.text(
-                  en: 'No reviews yet.',
-                  ar: 'لا توجد مراجعات بعد.',
-                ),
-                style: TextStyle(color: Colors.grey.shade600),
-              )
-            else
-              ...reviews.map((review) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Card(
-                      elevation: 0,
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          product.brand.toUpperCase(),
+                          style: TextStyle(
+                            color: scheme.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (product.stock > 0)
+                        Text(
+                          '${appState.text(en: 'IN STOCK', ar: 'متوفر')}: ${product.stock}',
+                          style: const TextStyle(
+                            color: Colors.greenAccent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      else
+                        Text(
+                          appState.text(en: 'OUT OF STOCK', ar: 'نفد'),
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    product.name,
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '\$${basePrice.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color: scheme.primary,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (hasRetailDiscount) ...[
+                            const SizedBox(width: 12),
+                            Text(
+                              '\$${product.price.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: scheme.onSurface.withValues(alpha: 0.4),
+                                decoration: TextDecoration.lineThrough,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (appState.isWholesale) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          appState.text(
+                            en: 'Wholesale discount is applied at checkout.',
+                            ar: 'يتم تطبيق خصم الجملة عند إتمام الطلب.',
+                          ),
+                          style: TextStyle(
+                            color: scheme.onSurface.withValues(alpha: 0.72),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    appState.text(en: 'Description', ar: 'الوصف'),
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    product.description,
+                    style: TextStyle(
+                      color: scheme.onSurface.withValues(alpha: 0.72),
+                      fontSize: 15,
+                      height: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  if (product.tags.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: product.tags
+                          .map(
+                            (tag) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: scheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: scheme.outlineVariant.withValues(
+                                    alpha: 0.24,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                tag,
+                                style: TextStyle(
+                                  color: scheme.onSurface.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        appState.text(en: 'Client Reviews', ar: 'آراء العملاء'),
+                        style: TextStyle(
+                          color: scheme.onSurface,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _showReviewModal,
+                        child: Text(
+                          appState.text(en: 'Add Review', ar: 'إضافة تقييم'),
+                          style: TextStyle(
+                            color: scheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (ratingSummary != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: scheme.outlineVariant.withValues(alpha: 0.24),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            ratingSummary.averageRating.toStringAsFixed(1),
+                            style: TextStyle(
+                              color: scheme.primary,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: List.generate(
+                                    5,
+                                    (index) => Icon(
+                                      index <
+                                              ratingSummary.averageRating
+                                                  .round()
+                                          ? Icons.star_rounded
+                                          : Icons.star_outline_rounded,
+                                      size: 18,
+                                      color: scheme.primary,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${ratingSummary.totalReviews} ${appState.text(en: 'reviews', ar: 'تقييمات')}',
+                                  style: TextStyle(
+                                    color: scheme.onSurface.withValues(
+                                      alpha: 0.65,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_reviewsLoading)
+                    Center(
+                      child: CircularProgressIndicator(color: scheme.primary),
+                    )
+                  else if (_reviewsError != null)
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: scheme.errorContainer,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        _reviewsError!,
+                        style: TextStyle(color: scheme.onErrorContainer),
+                      ),
+                    )
+                  else if (comments.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: scheme.outlineVariant.withValues(alpha: 0.24),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          appState.text(
+                            en: 'Be the first to review this masterpiece.',
+                            ar: 'كن أول من يقيم هذه التحفة.',
+                          ),
+                          style: TextStyle(
+                            color: scheme.onSurface.withValues(alpha: 0.55),
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  else
+                    ...comments.map(
+                      (review) => Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainer,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: scheme.outlineVariant.withValues(
+                              alpha: 0.24,
+                            ),
+                          ),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  review.reviewerName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                Expanded(
+                                  child: Text(
+                                    review.reviewerName ?? 'Anonymous',
+                                    style: TextStyle(
+                                      color: scheme.onSurface,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                                 Row(
                                   children: List.generate(
                                     5,
                                     (index) => Icon(
-                                      index < review.rating ? Icons.star : Icons.star_border,
-                                      size: 16,
-                                      color: Colors.amber,
+                                      index < review.rating
+                                          ? Icons.star_rounded
+                                          : Icons.star_outline_rounded,
+                                      size: 14,
+                                      color: scheme.primary,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-                            if (review.comment.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(review.comment),
-                            ],
+                            const SizedBox(height: 8),
+                            if (review.title.isNotEmpty)
+                              Text(
+                                review.title,
+                                style: TextStyle(
+                                  color: scheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            if (review.comment != null &&
+                                review.comment!.trim().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  review.comment!,
+                                  style: TextStyle(
+                                    color: scheme.onSurface.withValues(
+                                      alpha: 0.65,
+                                    ),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                if (review.isVerifiedPurchase)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      appState.text(
+                                        en: 'Verified',
+                                        ar: 'شراء موثّق',
+                                      ),
+                                      style: const TextStyle(
+                                        color: Colors.green,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                const Spacer(),
+                                Text(
+                                  MaterialLocalizations.of(
+                                    context,
+                                  ).formatShortDate(review.createdAt),
+                                  style: TextStyle(
+                                    color: scheme.onSurface.withValues(
+                                      alpha: 0.45,
+                                    ),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  )),
-          ],
-        ),
-      ),
-      ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Row(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove),
-                          onPressed: _decrement,
-                          color: _quantity > 1 ? null : Colors.grey,
-                        ),
-                        Text('$_quantity', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        IconButton(
-                          icon: const Icon(Icons.add),
-                          onPressed: _increment,
-                          color: _quantity < product.stock ? null : Colors.grey,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: product.stock > 0 ? _addToCart : null,
-                      icon: const Icon(Icons.shopping_cart),
-                      label: Text(appState.text(en: 'Add to Cart', ar: 'أضف إلى السلة')),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 56),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          border: Border(
+            top: BorderSide(
+              color: scheme.outlineVariant.withValues(alpha: 0.24),
+            ),
+          ),
+        ),
+        child: SafeArea(
+          child: Row(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.24),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.remove, color: scheme.onSurface),
+                      onPressed: _decrement,
+                    ),
+                    Text(
+                      '$_quantity',
+                      style: TextStyle(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.add, color: scheme.onSurface),
+                      onPressed: _increment,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: product.stock > 0 ? _addToCart : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: scheme.primary,
+                    foregroundColor: scheme.onPrimary,
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    appState.text(en: 'Add to Cart', ar: 'أضف إلى السلة'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

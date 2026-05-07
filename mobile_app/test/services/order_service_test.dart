@@ -50,13 +50,13 @@ void main() {
 
     test('should map Arabic error messages', () {
       const arabicErrors = [
-        'نفذت الكمية',
+        'نفدت الكمية',
         'السلة فارغة',
         'خطأ في الشبكة',
       ];
 
       for (final error in arabicErrors) {
-        expect(error.contains('نفذت الكمية') || error.contains('السلة فارغة'),
+        expect(error.contains('نفدت الكمية') || error.contains('السلة فارغة'),
                isTrue);
       }
     });

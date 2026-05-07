@@ -19,6 +19,16 @@ class FavoritesService {
         .toSet();
   }
 
+  Future<Map<String, int>> fetchFavoriteCounts() async {
+    final response = await _client.from('favorites').select('product_id');
+    final Map<String, int> counts = {};
+    for (final row in response as List) {
+      final productId = (row as Map)['product_id'].toString();
+      counts[productId] = (counts[productId] ?? 0) + 1;
+    }
+    return counts;
+  }
+
   Future<void> addFavorite(String productId) async {
     final user = _client.auth.currentUser;
     if (user == null) {

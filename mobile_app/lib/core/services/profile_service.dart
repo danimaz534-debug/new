@@ -13,7 +13,9 @@ class ProfileService {
 
     final data = await _client
         .from('profiles')
-        .select('id, email, full_name, role, is_blocked, preferred_language, created_at')
+        .select(
+          'id, email, full_name, avatar_url, role, is_blocked, preferred_language, created_at',
+        )
         .eq('id', user.id)
         .maybeSingle();
 
@@ -31,11 +33,7 @@ class ProfileService {
 
     final result = await _client.rpc(
       'ensure_profile',
-      params: {
-        'p_full_name': fullName,
-        'p_role': role,
-        'p_language': language,
-      },
+      params: {'p_full_name': fullName, 'p_role': role, 'p_language': language},
     );
 
     if (result is Map) {
@@ -63,14 +61,42 @@ class ProfileService {
       throw StateError('You must be signed in to update your profile.');
     }
 
+    final normalizedName = fullName.trim();
+
     final result = await _client
         .from('profiles')
         .update({
-          'full_name': fullName.trim(),
+          'full_name': normalizedName,
           'preferred_language': preferredLanguage,
         })
         .eq('id', user.id)
-        .select('id, email, full_name, role, is_blocked, preferred_language, created_at')
+        .select(
+          'id, email, full_name, avatar_url, role, is_blocked, preferred_language, created_at',
+        )
+        .single();
+
+    await _client.auth.updateUser(
+      UserAttributes(
+        data: {'full_name': normalizedName, 'name': normalizedName},
+      ),
+    );
+
+    return AppUser.fromMap(Map<String, dynamic>.from(result));
+  }
+
+  Future<AppUser> updateAvatar(String avatarUrl) async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw StateError('You must be signed in to update your profile.');
+    }
+
+    final result = await _client
+        .from('profiles')
+        .update({'avatar_url': avatarUrl})
+        .eq('id', user.id)
+        .select(
+          'id, email, full_name, avatar_url, role, is_blocked, preferred_language, created_at',
+        )
         .single();
 
     return AppUser.fromMap(Map<String, dynamic>.from(result));

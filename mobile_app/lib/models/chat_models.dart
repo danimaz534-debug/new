@@ -5,6 +5,11 @@ class ChatThread {
     required this.assignedSalesId,
     required this.lastSalesReplyAt,
     required this.createdAt,
+    required this.aiModeActive,
+    required this.awaitingAdminResponse,
+    required this.lastUserMessageAt,
+    required this.lastAdminMessageAt,
+    required this.lastAiMessageAt,
   });
 
   final String id;
@@ -12,6 +17,11 @@ class ChatThread {
   final String? assignedSalesId;
   final DateTime? lastSalesReplyAt;
   final DateTime? createdAt;
+  final bool aiModeActive;
+  final bool awaitingAdminResponse;
+  final DateTime? lastUserMessageAt;
+  final DateTime? lastAdminMessageAt;
+  final DateTime? lastAiMessageAt;
 
   factory ChatThread.fromMap(Map<String, dynamic> map) {
     return ChatThread(
@@ -24,6 +34,17 @@ class ChatThread {
       createdAt: map['created_at'] == null
           ? null
           : DateTime.tryParse(map['created_at'].toString()),
+      aiModeActive: map['ai_mode_active'] == true,
+      awaitingAdminResponse: map['awaiting_admin_response'] == true,
+      lastUserMessageAt: map['last_user_message_at'] == null
+          ? null
+          : DateTime.tryParse(map['last_user_message_at'].toString()),
+      lastAdminMessageAt: map['last_admin_message_at'] == null
+          ? null
+          : DateTime.tryParse(map['last_admin_message_at'].toString()),
+      lastAiMessageAt: map['last_ai_message_at'] == null
+          ? null
+          : DateTime.tryParse(map['last_ai_message_at'].toString()),
     );
   }
 }
@@ -47,6 +68,7 @@ class ChatMessage {
 
   bool get isUser => senderType == 'user';
   bool get isAI => senderType == 'ai';
+  bool get isAdmin => senderType == 'sales' || senderType == 'admin';
 
   factory ChatMessage.fromMap(Map<String, dynamic> map) {
     return ChatMessage(

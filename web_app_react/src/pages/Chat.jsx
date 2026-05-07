@@ -20,6 +20,14 @@ function statusCopy(thread, latestMessage, now, language = 'en') {
     };
   }
 
+  if (thread.ai_mode_active) {
+    return {
+      label: t('aiModeActive', language) || "AI Mode Active",
+      tone: "warning",
+      helper: t('aiHandlingConversation', language) || "AI is handling this conversation. Send a message to take over.",
+    };
+  }
+
   if (latestMessage?.sender_type === "user") {
     if (!thread.last_sales_reply_at) {
       return {
@@ -34,6 +42,14 @@ function statusCopy(thread, latestMessage, now, language = 'en') {
       Math.round((now - new Date(thread.last_sales_reply_at).getTime()) / 60000),
     );
 
+    if (minutes >= 10) {
+      return {
+        label: "AI timeout reached",
+        tone: "danger",
+        helper: "AI should have responded. Check the ai-timeout-processor function.",
+      };
+    }
+
     if (minutes >= 5) {
       return {
         label: "Fallback window reached",
@@ -45,7 +61,7 @@ function statusCopy(thread, latestMessage, now, language = 'en') {
     return {
       label: t('waitingForSales', language),
       tone: "warning",
-      helper: `Fallback triggers in about ${5 - minutes} minute(s).`,
+      helper: `Fallback triggers in about ${10 - minutes} minute(s).`,
     };
   }
 
@@ -56,7 +72,6 @@ function statusCopy(thread, latestMessage, now, language = 'en') {
   };
 }
 
-// Helper to render online status or last seen
 function renderOnlineStatus(lastSeenAt) {
   const status = activityStatus(lastSeenAt);
   if (status === 'Active') {
@@ -70,6 +85,38 @@ function renderOnlineStatus(lastSeenAt) {
   return activityLabel(lastSeenAt);
 }
 
+function MessageBubble({ message }) {
+  const isUser = message.sender_type === 'user';
+  const isAI = message.sender_type === 'ai';
+  const isSales = message.sender_type === 'sales' || message.sender_type === 'admin';
+
+  const bubbleClass = `chat-bubble ${message.sender_type}${isAI ? ' ai-message' : ''}`;
+
+  return (
+    <article key={message.id} className={bubbleClass}>
+      <div className="message-header">
+        {isAI && (
+          <span className="ai-icon" style={{ marginRight: '6px' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+              <circle cx="7.5" cy="14.5" r="1.5" fill="currentColor"/>
+              <circle cx="16.5" cy="14.5" r="1.5" fill="currentColor"/>
+            </svg>
+          </span>
+        )}
+        <strong>
+          {message.sender?.full_name ??
+            message.sender?.email ??
+            (isAI ? 'AI Assistant' : isUser ? 'Customer' : 'Sales')}
+        </strong>
+        {isAI && <span className="ai-badge">AI</span>}
+      </div>
+      <p>{message.message}</p>
+      <small>{new Date(message.created_at).toLocaleTimeString()}</small>
+    </article>
+  );
+}
+
 export default function ChatPage() {
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState("");
@@ -80,7 +127,6 @@ export default function ChatPage() {
   const streamRef = useRef(null);
   const { pushToast, language } = useUiStore();
 
-  // Disable send when no thread selected
   const isSendDisabled = !activeThread || draft.trim() === "";
 
   useEffect(() => {
@@ -133,6 +179,7 @@ export default function ChatPage() {
 
   const latestMessage = messages.length ? messages[messages.length - 1] : null;
   const status = statusCopy(activeConversation, latestMessage, now, language);
+  const isAiMode = activeConversation?.ai_mode_active === true;
 
   const submit = async (event) => {
     event.preventDefault();
@@ -140,8 +187,9 @@ export default function ChatPage() {
     try {
       await sendSalesMessage(activeThread, draft.trim());
       setDraft("");
-      // Refresh messages immediately after sending
       fetchMessages(activeThread).then(setMessages).catch(console.error);
+      const updatedThreads = await fetchChatThreads();
+      setThreads(updatedThreads);
     } catch (error) {
       pushToast({ tone: "danger", message: error.message });
     }
@@ -154,7 +202,6 @@ export default function ChatPage() {
       await deleteChatMessages(activeThread);
       pushToast({ tone: "success", message: "Chat emptied successfully" });
       setMessages([]);
-      // Refresh threads to update UI
       const updatedThreads = await fetchChatThreads();
       setThreads(updatedThreads);
     } catch (error) {
@@ -162,13 +209,14 @@ export default function ChatPage() {
     }
   };
 
-  // Handle Ctrl+Enter or Cmd+Enter to send
   const handleKeyDown = (event) => {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       submit(event);
     }
   };
+
+  const aiMessageCount = messages.filter(m => m.sender_type === 'ai').length;
 
   return (
     <div className="page-grid">
@@ -198,23 +246,33 @@ export default function ChatPage() {
                 messages.length > 0 &&
                 activeThread === thread.id &&
                 latestMessage?.sender_type === "user";
+              const threadAiMode = thread.ai_mode_active === true;
 
               return (
                 <button
                   key={thread.id}
                   type="button"
-                  className={`thread-card${isActive ? " active" : ""}`}
+                  className={`thread-card${isActive ? " active" : ""}${threadAiMode ? " ai-active" : ""}`}
                   onClick={() => setActiveThread(thread.id)}
                 >
                   <div className="thread-topline">
                     <strong>{thread.profiles?.full_name ?? t('wholesaleUser', language)}</strong>
-                    {waiting && <span className="thread-badge">Waiting</span>}
+                    {threadAiMode && (
+                      <span className="thread-badge ai">AI</span>
+                    )}
+                    {waiting && !threadAiMode && (
+                      <span className="thread-badge">Waiting</span>
+                    )}
                   </div>
                   <span>{thread.profiles?.email ?? t('noEmail', language)}</span>
                   <div className="thread-meta">
                     <small>{new Date(thread.latest_message_at).toLocaleString()}</small>
                     <small>
-                      {thread.assigned_sales_id ? t('assigned', language) : t('unassigned', language)}
+                      {threadAiMode
+                        ? "AI Active"
+                        : thread.assigned_sales_id
+                          ? t('assigned', language)
+                          : t('unassigned', language)}
                     </small>
                   </div>
                 </button>
@@ -234,7 +292,7 @@ export default function ChatPage() {
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
-                    background: 'var(--accent)',
+                    background: isAiMode ? '#F59E0B' : 'var(--accent)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -242,13 +300,29 @@ export default function ChatPage() {
                     fontWeight: 'bold',
                     fontSize: '1.1rem'
                   }}>
-                    {(activeConversation.profiles?.full_name?.[0] || activeConversation.profiles?.email?.[0] || '?').toUpperCase()}
+                    {isAiMode
+                      ? '🤖'
+                      : (activeConversation.profiles?.full_name?.[0] || activeConversation.profiles?.email?.[0] || '?').toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <strong>
-                    {activeConversation?.profiles?.full_name ?? t('selectThread', language)}
-                  </strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <strong>
+                      {activeConversation?.profiles?.full_name ?? t('selectThread', language)}
+                    </strong>
+                    {isAiMode && (
+                      <span style={{
+                        background: '#FEF3C7',
+                        color: '#92400E',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                      }}>
+                        AI MODE
+                      </span>
+                    )}
+                  </div>
                   <span>{activeConversation?.profiles?.email ?? t('noEmail', language)}</span>
                   {activeConversation?.profiles?.last_seen_at && (
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-soft)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -261,6 +335,11 @@ export default function ChatPage() {
                 {activeConversation && (
                   <small>
                     {t('opened', language)} {new Date(activeConversation.created_at).toLocaleString()}
+                  </small>
+                )}
+                {isAiMode && aiMessageCount > 0 && (
+                  <small style={{ color: '#92400E', marginLeft: '8px' }}>
+                    {aiMessageCount} AI message{aiMessageCount !== 1 ? 's' : ''}
                   </small>
                 )}
                 {activeThread && (
@@ -276,6 +355,28 @@ export default function ChatPage() {
               </div>
             </div>
 
+            {isAiMode && (
+              <div style={{
+                background: '#FEF3C7',
+                border: '1px solid #FDE68A',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                margin: '8px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.85rem',
+                color: '#92400E',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                </svg>
+                <span>
+                  <strong>AI is handling this conversation.</strong> Send a message to take over and disable AI mode.
+                </span>
+              </div>
+            )}
+
             <div className="chat-stream enhanced" ref={streamRef}>
               {messages.length === 0 ? (
                 <div className="chat-empty-state">
@@ -284,18 +385,7 @@ export default function ChatPage() {
                 </div>
               ) : (
                 messages.map((message) => (
-                  <article
-                    key={message.id}
-                    className={`chat-bubble ${message.sender_type}`}
-                  >
-                    <strong>
-                      {message.sender?.full_name ??
-                        message.sender?.email ??
-                        message.sender_type}
-                    </strong>
-                    <p>{message.message}</p>
-                    <small>{new Date(message.created_at).toLocaleTimeString()}</small>
-                  </article>
+                  <MessageBubble key={message.id} message={message} />
                 ))
               )}
             </div>
@@ -305,11 +395,13 @@ export default function ChatPage() {
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={t('replyPlaceholder', language)}
+                placeholder={isAiMode
+                  ? "Send a message to take over from AI..."
+                  : t('replyPlaceholder', language)}
                 disabled={!activeThread}
               />
-              <button 
-                className="primary-button" 
+              <button
+                className="primary-button"
                 type="submit"
                 disabled={isSendDisabled}
               >
