@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'package:mobile_app/core/providers/app_state_provider.dart';
 import 'package:mobile_app/widgets/feedback.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({
-    super.key,
-    this.onSupportChat,
-  });
-
+  const AuthScreen({super.key, this.onSupportChat});
   final VoidCallback? onSupportChat;
 
   @override
@@ -22,6 +17,8 @@ class _AuthScreenState extends State<AuthScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   bool _isRegister = false;
+  bool _oauthLoading = false;
+  String? _oauthProvider;
 
   @override
   void dispose() {
@@ -33,7 +30,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _submit(AppStateProvider appState) async {
     if (!_formKey.currentState!.validate()) return;
-
     try {
       if (_isRegister) {
         await appState.signUp(
@@ -45,10 +41,7 @@ class _AuthScreenState extends State<AuthScreen> {
         showAppSnackBar(
           context,
           appState.lastError ??
-              appState.text(
-                en: 'Account created successfully.',
-                ar: 'تم إنشاء الحساب بنجاح.',
-              ),
+              appState.text(en: 'Account created successfully.', ar: 'تم إنشاء الحساب بنجاح.'),
         );
       } else {
         await appState.signIn(
@@ -61,66 +54,88 @@ class _AuthScreenState extends State<AuthScreen> {
     } catch (error) {
       if (!mounted) return;
       if (appState.isBlocked) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A1A),
-            title: Text(
-              appState.text(en: 'Account Suspended', ar: 'الحساب معلّق'),
-              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
-            ),
-            content: Text(
-              appState.text(
-                en: 'This account has been suspended. Contact an administrator to restore access.',
-                ar: 'تم تعليق هذا الحساب. تواصل مع المسؤول لاستعادة الدخول.',
-              ),
-              style: const TextStyle(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  appState.clearBlockedFlag();
-                },
-                child: Text(appState.text(en: 'OK', ar: 'حسنًا'), style: const TextStyle(color: Color(0xFFD4AF37))),
-              ),
-              FilledButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                  widget.onSupportChat?.call();
-                },
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD4AF37), foregroundColor: Colors.black),
-                child: Text(appState.text(en: 'Contact Support', ar: 'تواصل مع الدعم')),
-              ),
-            ],
-          ),
-        );
+        _showBlockedDialog(appState);
       } else {
         showAppSnackBar(context, error.toString(), isError: true);
       }
     }
   }
 
+  Future<void> _signInWithGoogle(AppStateProvider appState) async {
+    setState(() { _oauthLoading = true; _oauthProvider = 'google'; });
+    try {
+      await appState.signInWithGoogle();
+    } catch (error) {
+      if (!mounted) return;
+      showAppSnackBar(context, error.toString(), isError: true);
+    } finally {
+      if (mounted) setState(() { _oauthLoading = false; _oauthProvider = null; });
+    }
+  }
+
+  Future<void> _signInWithGitHub(AppStateProvider appState) async {
+    setState(() { _oauthLoading = true; _oauthProvider = 'github'; });
+    try {
+      await appState.signInWithGitHub();
+    } catch (error) {
+      if (!mounted) return;
+      showAppSnackBar(context, error.toString(), isError: true);
+    } finally {
+      if (mounted) setState(() { _oauthLoading = false; _oauthProvider = null; });
+    }
+  }
+
+  void _showBlockedDialog(AppStateProvider appState) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text(
+          appState.text(en: 'Account Suspended', ar: 'الحساب معلّق'),
+          style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          appState.text(
+            en: 'This account has been suspended. Contact an administrator to restore access.',
+            ar: 'تم تعليق هذا الحساب. تواصل مع المسؤول لاستعادة الدخول.',
+          ),
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () { Navigator.pop(ctx); appState.clearBlockedFlag(); },
+            child: Text(appState.text(en: 'OK', ar: 'حسنًا'), style: const TextStyle(color: Color(0xFFD4AF37))),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+              widget.onSupportChat?.call();
+            },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD4AF37), foregroundColor: Colors.black),
+            child: Text(appState.text(en: 'Contact Support', ar: 'تواصل مع الدعم')),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppStateProvider>();
+    final isLoading = appState.isBusy || _oauthLoading;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       body: Stack(
         children: [
-          // Background subtle gradient
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   center: Alignment.topRight,
                   radius: 1.5,
-                  colors: [
-                    const Color(0xFFD4AF37).withOpacity(0.05),
-                    Colors.transparent,
-                  ],
+                  colors: [const Color(0xFFD4AF37).withOpacity(0.05), Colors.transparent],
                 ),
               ),
             ),
@@ -134,7 +149,6 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo / Branding
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -147,25 +161,16 @@ class _AuthScreenState extends State<AuthScreen> {
                       const SizedBox(height: 24),
                       Text(
                         appState.text(en: 'Obsidian & Ivory', ar: 'الأوبسيديان والعاج'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: -1,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -1),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        appState.text(
-                          en: 'Enter the world of premium hardware.',
-                          ar: 'ادخل عالم الأجهزة الفاخرة.',
-                        ),
+                        appState.text(en: 'Enter the world of premium hardware.', ar: 'ادخل عالم الأجهزة الفاخرة.'),
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
                       ),
                       const SizedBox(height: 48),
-                      
-                      // Form Container
+
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -178,7 +183,6 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Segmented Control
                               Row(
                                 children: [
                                   Expanded(
@@ -198,7 +202,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 ],
                               ),
                               const SizedBox(height: 32),
-                              
+
                               if (_isRegister) ...[
                                 _buildTextField(
                                   controller: _nameController,
@@ -224,9 +228,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                 validator: (v) => v == null || v.length < 6 ? 'Min 6 chars' : null,
                               ),
                               const SizedBox(height: 32),
-                              
+
                               ElevatedButton(
-                                onPressed: appState.isBusy ? null : () => _submit(appState),
+                                onPressed: isLoading ? null : () => _submit(appState),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFD4AF37),
                                   foregroundColor: Colors.black,
@@ -234,37 +238,43 @@ class _AuthScreenState extends State<AuthScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   elevation: 0,
                                 ),
-                                child: Text(
-                                  appState.isBusy
-                                      ? appState.text(en: 'Processing...', ar: 'جاري المعالجة...')
-                                      : (_isRegister ? appState.text(en: 'Create Account', ar: 'إنشاء حساب') : appState.text(en: 'Sign In', ar: 'دخول')),
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
+                                child: isLoading && _oauthProvider == null
+                                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                                    : Text(
+                                        _isRegister
+                                            ? appState.text(en: 'Create Account', ar: 'إنشاء حساب')
+                                            : appState.text(en: 'Sign In', ar: 'دخول'),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 24),
                       Text(
                         appState.text(en: 'Or continue with', ar: 'أو المتابعة بواسطة'),
                         style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
                             child: _buildSocialButton(
                               icon: Icons.g_mobiledata_rounded,
-                              onTap: () => appState.signInWithGoogle(),
+                              label: 'Google',
+                              isLoading: _oauthLoading && _oauthProvider == 'google',
+                              onTap: isLoading ? null : () => _signInWithGoogle(appState),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: _buildSocialButton(
                               icon: Icons.code_rounded,
-                              onTap: () => appState.signInWithGitHub(),
+                              label: 'GitHub',
+                              isLoading: _oauthLoading && _oauthProvider == 'github',
+                              onTap: isLoading ? null : () => _signInWithGitHub(appState),
                             ),
                           ),
                         ],
@@ -294,22 +304,9 @@ class _AuthScreenState extends State<AuthScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: active ? const Color(0xFFD4AF37) : Colors.transparent,
-              width: 2,
-            ),
-          ),
+          border: Border(bottom: BorderSide(color: active ? const Color(0xFFD4AF37) : Colors.transparent, width: 2)),
         ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: active ? Colors.white : Colors.white.withOpacity(0.3),
-            fontWeight: active ? FontWeight.bold : FontWeight.normal,
-            fontSize: 16,
-          ),
-        ),
+        child: Text(label, textAlign: TextAlign.center, style: TextStyle(color: active ? Colors.white : Colors.white.withOpacity(0.3), fontWeight: active ? FontWeight.bold : FontWeight.normal, fontSize: 16)),
       ),
     );
   }
@@ -334,27 +331,20 @@ class _AuthScreenState extends State<AuthScreen> {
         prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.3), size: 20),
         filled: true,
         fillColor: Colors.white.withOpacity(0.03),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD4AF37)),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.redAccent),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.redAccent),
-        ),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.05))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD4AF37))),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent)),
+        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent)),
       ),
     );
   }
 
-  Widget _buildSocialButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _buildSocialButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+    bool isLoading = false,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -365,7 +355,16 @@ class _AuthScreenState extends State<AuthScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
-        child: Icon(icon, color: Colors.white, size: 32),
+        child: isLoading
+            ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: Colors.white, size: 24),
+                  const SizedBox(width: 8),
+                  Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                ],
+              ),
       ),
     );
   }

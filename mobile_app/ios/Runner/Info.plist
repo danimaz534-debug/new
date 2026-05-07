@@ -45,5 +45,4 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-</dict>
-</plist>
+\t<key>CFBundleURLTypes</key>\r\n\t<array>\r\n\t\t<dict>\r\n\t\t\t<key>CFBundleURLName</key>\r\n\t\t\t<string>auth</string>\r\n\t\t\t<key>CFBundleURLSchemes</key>\r\n\t\t\t<array>\r\n\t\t\t\t<string>com.example.mobileapp</string>\r\n\t\t\t\t<string>mobileapp</string>\r\n\t\t\t</array>\r\n\t\t</dict>\r\n\t</array>\r\n\t<key>LSApplicationQueriesSchemes</key>\r\n\t<array>\r\n\t\t<string>https</string>\r\n\t</array>\r\n</dict>\r\n</plist>
