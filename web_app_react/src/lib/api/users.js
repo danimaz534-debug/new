@@ -118,17 +118,31 @@ export async function fetchUsers() {
   const withRetry = (await import("./client.js")).withRetry;
   return withRetry(async () => {
     const client = requireClient();
+
     const [profilesRes, ordersRes] = await Promise.all([
       client.from("profiles").select("*").limit(1000),
       client.from("orders").select("user_id, total_amount").limit(500),
     ]);
     if (profilesRes.error) throw profilesRes.error;
 
+    let providerByUser = {};
+    try {
+      const { data: authData } = await client.rpc("get_auth_users");
+      if (authData) {
+        providerByUser = authData.reduce((acc, u) => {
+          const appProvider = u?.app_metadata?.provider;
+          const identityProvider = u?.identities?.[0]?.provider;
+          acc[u.id] = appProvider || identityProvider || "email";
+          return acc;
+        }, {});
+      }
+    } catch (e) {
+      console.warn("get_auth_users RPC not available, falling back to email");
+    }
+
     const ordersByUser = (ordersRes.data ?? []).reduce((acc, order) => {
       const userId = order.user_id;
-      if (!acc[userId]) {
-        acc[userId] = { count: 0, total: 0 };
-      }
+      if (!acc[userId]) acc[userId] = { count: 0, total: 0 };
       acc[userId].count += 1;
       acc[userId].total += Number(order.total_amount ?? 0);
       return acc;
@@ -139,6 +153,7 @@ export async function fetchUsers() {
       orders: ordersByUser[user.id]?.count ?? 0,
       totalSpend: ordersByUser[user.id]?.total ?? 0,
       status: user.is_blocked ? "Blocked" : "Active",
+      provider: providerByUser[user.id] ?? "email",
     }));
   });
 }

@@ -3,6 +3,22 @@ import { ensureProfile, fetchCurrentProfile, touchStaffPresence } from "../lib/a
 import { supabase } from "../lib/supabase";
 import { isStaffRole } from "../lib/roles";
 
+function _getProvider(user) {
+  if (!user) return "email";
+  const appProvider = user.app_metadata?.provider;
+  if (appProvider === "google" || appProvider === "github") return appProvider;
+  const identities = user.identities;
+  if (identities && identities.length > 0) {
+    const p = identities[0].provider;
+    if (p === "google" || p === "github") return p;
+  }
+  return "email";
+}
+
+function _isOAuthProvider(provider) {
+  return provider === "google" || provider === "github";
+}
+
 const useAuthStore = create((set, get) => ({
   user: null,
   role: "guest",
@@ -11,17 +27,18 @@ const useAuthStore = create((set, get) => ({
   isChecking: false,
   error: "",
 
-  checkSession() {
-    if (get().isChecking) return Promise.resolve();
+  async checkSession() {
+    if (get().isChecking) return;
 
-    if (!supabase) {
-      set({ user: null, role: "guest", profile: null, isLoading: false, error: "Supabase is not configured." });
-      return Promise.resolve();
-    }
+    try {
+      if (!supabase) {
+        set({ user: null, role: "guest", profile: null, isLoading: false, error: "Supabase is not configured." });
+        return;
+      }
 
-    set({ isChecking: true, error: "" });
+      set({ isChecking: true, error: "" });
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-    return supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error) {
         set({ isLoading: false, isChecking: false, error: error.message });
         return;
@@ -34,7 +51,7 @@ const useAuthStore = create((set, get) => ({
 
       const provider = _getProvider(session.user);
 
-      if (provider === "google" || provider === "github") {
+      if (_isOAuthProvider(provider)) {
         set({
           user: null, role: "guest", profile: null,
           isLoading: false, isChecking: false,
@@ -77,9 +94,13 @@ const useAuthStore = create((set, get) => ({
         isChecking: false,
         error: nextError,
       });
-    }).catch((error) => {
-      set({ user: null, role: "guest", profile: null, isLoading: false, isChecking: false, error: error?.message ?? "Failed to initialize session." });
-    });
+    } catch (error) {
+      set({
+        user: null, role: "guest", profile: null,
+        isLoading: false, isChecking: false,
+        error: error?.message ?? "Failed to initialize the staff session.",
+      });
+    }
   },
 
   async signIn(email, password) {
@@ -102,19 +123,9 @@ const useAuthStore = create((set, get) => ({
   },
 }));
 
-function _getProvider(user) {
-  const appProvider = user?.app_metadata?.provider;
-  if (appProvider === "google" || appProvider === "github") return appProvider;
-  const identities = user?.identities;
-  if (identities && identities.length > 0) {
-    const p = identities[0].provider;
-    if (p === "google" || p === "github") return p;
-  }
-  return "email";
-}
-
 if (supabase) {
   useAuthStore.getState().checkSession().catch(() => {});
+
   supabase.auth.onAuthStateChange((event) => {
     if (["SIGNED_IN", "USER_UPDATED", "TOKEN_REFRESHED"].includes(event)) {
       useAuthStore.getState().checkSession().catch(() => {});

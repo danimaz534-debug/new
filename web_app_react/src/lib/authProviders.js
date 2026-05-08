@@ -1,22 +1,22 @@
 const PROVIDER_LABELS = {
-  google: { label: 'Google', color: '#4285F4', bg: '#E8F0FE', icon: 'G' },
-  github: { label: 'GitHub', color: '#fff', bg: '#24292E', icon: 'GH' },
-  email: { label: 'Email', color: '#1565C0', bg: '#E3F2FD', icon: '@' },
+  google: { label: "Google", color: "#4285F4", bg: "#E8F0FE", icon: "G" },
+  github: { label: "GitHub", color: "#fff", bg: "#24292E", icon: "GH" },
+  email: { label: "Email", color: "#1565C0", bg: "#E3F2FD", icon: "@" },
 };
 
 export function getAuthProvider(user) {
-  if (!user) return 'email';
+  if (!user) return "email";
 
-  const appProvider = user.app_metadata?.provider;
-  if (appProvider === 'google' || appProvider === 'github') return appProvider;
+  const appProvider = user?.app_metadata?.provider;
+  if (appProvider === "google" || appProvider === "github") return appProvider;
 
-  const identities = user.identities;
+  const identities = user?.identities;
   if (identities && identities.length > 0) {
-    const provider = identities[0].provider;
-    if (provider === 'google' || provider === 'github') return provider;
+    const p = identities[0].provider;
+    if (p === "google" || p === "github") return p;
   }
 
-  return 'email';
+  return "email";
 }
 
 export function getProviderMeta(provider) {
@@ -24,15 +24,10 @@ export function getProviderMeta(provider) {
 }
 
 export function isOAuthProvider(provider) {
-  return provider === 'google' || provider === 'github';
+  return provider === "google" || provider === "github";
 }
 
 export function canResetPassword(user) {
   const provider = getAuthProvider(user);
   return !isOAuthProvider(provider);
-}
-
-export function getProviderBadgeHTML(provider) {
-  const meta = getProviderMeta(provider);
-  return `<span class="provider-badge ${provider}" style="background:${meta.bg};color:${meta.color}">${meta.icon} ${meta.label}</span>`;
 }
