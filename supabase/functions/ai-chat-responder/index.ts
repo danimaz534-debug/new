@@ -194,7 +194,7 @@ async function generateAiReply(
     .select("*")
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true })
-    .limit(30);
+    ;
 
   if (fetchErr) throw fetchErr;
   if (!messages || messages.length === 0) {
