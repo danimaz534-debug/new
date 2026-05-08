@@ -89,7 +89,7 @@ class ChatService {
   Future<void> triggerAiResponse(String threadId) async {
     try {
       await _client.functions.invoke('ai-chat-responder', body: {
-        'action': 'handle_user_message',
+        'action': 'instant_ai_reply',
         'thread_id': threadId,
       });
     } catch (e) {

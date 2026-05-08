@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const AI_TIMEOUT_MINUTES = 10;
 const GEMINI_MODEL = "gemini-2.5-flash";
 
 serve(async (req) => {
@@ -64,24 +63,24 @@ async function handleUserMessage(
     return jsonError("Thread not found", 404);
   }
 
-  if (thread.ai_mode_active && !thread.last_admin_message_at) {
+  // AI mode is active — respond INSTANTLY, no timer
+  if (thread.ai_mode_active) {
     return await generateAiReply(supabase, threadId, geminiKey);
   }
 
-  if (thread.ai_mode_active && thread.last_admin_message_at) {
+  // Check if admin already replied since last AI message
+  if (thread.last_admin_message_at && thread.last_ai_message_at) {
     const lastAdmin = new Date(thread.last_admin_message_at);
-    const lastAi = thread.last_ai_message_at
-      ? new Date(thread.last_ai_message_at)
-      : new Date(0);
-    if (lastAdmin > lastAi) {
-      return await generateAiReply(supabase, threadId, geminiKey);
-    }
+    const lastAi = new Date(thread.last_ai_message_at);
+    // Admin replied after last AI message — this is a new human-handled conversation
+    // Schedule a fresh 10-min timer
   }
 
+  // First message or admin never replied — schedule AI timeout
   return new Response(
     JSON.stringify({
       status: "scheduled",
-      message: `AI timeout scheduled for ${AI_TIMEOUT_MINUTES} minutes`,
+      message: "AI timeout scheduled for 10 minutes",
       thread_id: threadId,
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -96,45 +95,22 @@ async function processTimeout(
   const jobId = payload.job_id as string | undefined;
   if (!jobId) return jsonError("job_id is required", 400);
 
-  const { data: job, error: jobErr } = await supabase
-    .from("scheduled_jobs")
-    .select("*")
-    .eq("id", jobId)
-    .eq("status", "pending")
-    .single();
-
-  if (jobErr || !job) {
-    return new Response(
-      JSON.stringify({ status: "skipped", reason: "Job not found or already processed" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
-
   const { data: result, error: rpcErr } = await supabase.rpc("process_ai_timeout", {
     p_job_id: jobId,
   });
 
   if (rpcErr) {
-    await supabase.from("scheduled_jobs").update({
-      status: "failed",
-      error_message: rpcErr.message,
-      attempts: job.attempts + 1,
-    }).eq("id", jobId);
     return jsonError(`process_ai_timeout failed: ${rpcErr.message}`, 500);
   }
 
   const rpcResult = result as { status: string; reason?: string; thread_id?: string } | null;
 
   if (rpcResult?.status === "ready" && rpcResult.thread_id) {
-    const aiResult = await generateAiReply(supabase, rpcResult.thread_id, geminiKey);
-    return aiResult;
+    return await generateAiReply(supabase, rpcResult.thread_id, geminiKey);
   }
 
   return new Response(
-    JSON.stringify({
-      status: "skipped",
-      reason: rpcResult?.reason ?? "Unknown",
-    }),
+    JSON.stringify({ status: "skipped", reason: rpcResult?.reason ?? "Unknown" }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 }
@@ -146,8 +122,66 @@ async function instantAiReply(
 ) {
   const threadId = payload.thread_id as string | undefined;
   if (!threadId) return jsonError("thread_id is required", 400);
-
   return await generateAiReply(supabase, threadId, geminiKey);
+}
+
+async function fetchDatabaseContext(supabase: ReturnType<typeof createClient>): Promise<string> {
+  const [productsRes, ordersRes, statsRes] = await Promise.all([
+    supabase.from("products").select("id, name, category, brand, price, stock, is_best_seller, is_featured, is_hot_deal").limit(50),
+    supabase.from("orders").select("id, status, total_amount, created_at").order("created_at", { ascending: false }).limit(20),
+    supabase.from("products").select("stock", { count: "exact" }),
+  ]);
+
+  let context = "## VoltCart Database Context\n\n";
+
+  // Product summary
+  const products = productsRes.data ?? [];
+  if (products.length > 0) {
+    const totalProducts = products.length;
+    const inStock = products.filter((p: any) => p.stock > 0).length;
+    const outOfStock = products.filter((p: any) => p.stock === 0).length;
+    const bestSellers = products.filter((p: any) => p.is_best_seller).map((p: any) => p.name);
+    const featured = products.filter((p: any) => p.is_featured).map((p: any) => p.name);
+    const hotDeals = products.filter((p: any) => p.is_hot_deal).map((p: any) => `${p.name} ($${p.price})`);
+    const categories = [...new Set(products.map((p: any) => p.category))];
+    const brands = [...new Set(products.map((p: any) => p.brand))];
+
+    context += `### Product Inventory\n`;
+    context += `- Total products: ${totalProducts}\n`;
+    context += `- In stock: ${inStock}\n`;
+    context += `- Out of stock: ${outOfStock}\n`;
+    context += `- Categories: ${categories.join(", ")}\n`;
+    context += `- Brands: ${brands.join(", ")}\n`;
+
+    if (bestSellers.length > 0) context += `- Best sellers: ${bestSellers.join(", ")}\n`;
+    if (featured.length > 0) context += `- Featured: ${featured.join(", ")}\n`;
+    if (hotDeals.length > 0) context += `- Hot deals: ${hotDeals.join(", ")}\n`;
+
+    // Detailed stock for common products
+    context += `\n### Key Product Stock Levels\n`;
+    const keyProducts = products.filter((p: any) => p.is_best_seller || p.is_featured || p.is_hot_deal).slice(0, 15);
+    for (const p of keyProducts) {
+      const stockStatus = p.stock > 10 ? "In Stock" : p.stock > 0 ? `Low Stock (${p.stock})` : "Out of Stock";
+      context += `- ${p.name} (${p.brand}): $${p.price} — ${stockStatus}\n`;
+    }
+  }
+
+  // Order summary
+  const orders = ordersRes.data ?? [];
+  if (orders.length > 0) {
+    const preparing = orders.filter((o: any) => o.status === "Preparing").length;
+    const shipped = orders.filter((o: any) => o.status === "Shipped").length;
+    const onTheWay = orders.filter((o: any) => o.status === "On the way").length;
+    const delivered = orders.filter((o: any) => o.status === "Delivered").length;
+    const totalRevenue = orders.reduce((sum: number, o: any) => sum + Number(o.total_amount || 0), 0);
+
+    context += `\n### Recent Orders\n`;
+    context += `- Total recent orders: ${orders.length}\n`;
+    context += `- Preparing: ${preparing}, Shipped: ${shipped}, On the way: ${onTheWay}, Delivered: ${delivered}\n`;
+    context += `- Total revenue (recent): $${totalRevenue.toFixed(2)}\n`;
+  }
+
+  return context;
 }
 
 async function generateAiReply(
@@ -173,20 +207,12 @@ async function generateAiReply(
   const lastMessage = messages[messages.length - 1];
   if (lastMessage.sender_type !== "user") {
     return new Response(
-      JSON.stringify({
-        status: "skipped",
-        reason: `Last message is from ${lastMessage.sender_type}, not user`,
-      }),
+      JSON.stringify({ status: "skipped", reason: `Last message is from ${lastMessage.sender_type}, not user` }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 
-  const { data: thread } = await supabase
-    .from("chat_threads")
-    .select("ai_mode_active")
-    .eq("id", threadId)
-    .single();
-
+  // Check if admin replied during AI generation
   const { count: recentAdminCount } = await supabase
     .from("chat_messages")
     .select("*", { count: "exact", head: true })
@@ -205,17 +231,24 @@ async function generateAiReply(
     .map((m) => `${m.sender_type.toUpperCase()}: ${m.message}`)
     .join("\n");
 
+  // Fetch real database context
+  const dbContext = await fetchDatabaseContext(supabase);
+
   const systemPrompt = `You are the AI support agent for VoltCart, a premium e-commerce platform specializing in high-end electronics and accessories.
 
-Current conversation:
+${dbContext}
+
+Current conversation with user:
 ${chatHistory}
 
 Guidelines:
-- If the user asks about order status, acknowledge and mention a human agent will verify soon.
-- If the user asks about products (MacBook, PS5, Sony Alpha, etc.), provide helpful technical info.
-- If the user says hello, greet warmly in a professional brand voice.
-- Keep responses concise (under 80 words).
-- Provide a 1-sentence summary of the user's need for internal logs.
+- Use the product inventory and stock information above to answer questions about product availability, pricing, and stock levels.
+- If the user asks about order status, acknowledge and mention a human agent will verify details soon.
+- If the user asks about specific products, use the stock data above to tell them exact availability.
+- If the user asks about delivery, tell them the typical delivery timeline based on their location.
+- Keep responses helpful but concise (under 100 words).
+- Be specific — mention actual product names, prices, and stock levels from the data above.
+- Provide a 1-sentence summary of the user's current need for internal logs.
 
 Respond ONLY in this JSON format:
 {"reply": "Your message to the user", "summary": "1-sentence summary for admin"}`;
@@ -229,7 +262,7 @@ Respond ONLY in this JSON format:
         contents: [{ parts: [{ text: systemPrompt }] }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 300,
+          maxOutputTokens: 500,
           responseMimeType: "application/json",
         },
       }),
@@ -244,9 +277,7 @@ Respond ONLY in this JSON format:
   const geminiData = await geminiResponse.json();
   const aiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
-  if (!aiText) {
-    throw new Error("Gemini returned empty content");
-  }
+  if (!aiText) throw new Error("Gemini returned empty content");
 
   let parsed: { reply: string; summary: string };
   try {
@@ -276,19 +307,13 @@ Respond ONLY in this JSON format:
     );
   }
 
-  await supabase
-    .from("chat_threads")
-    .update({ ai_mode_active: true })
-    .eq("id", threadId);
+  await supabase.from("chat_threads").update({ ai_mode_active: true }).eq("id", threadId);
 
   console.log(`AI replied to thread ${threadId}`);
+  console.log(`DB context sent: ${dbContext.length} chars`);
 
   return new Response(
-    JSON.stringify({
-      status: "success",
-      reply: parsed.reply,
-      thread_id: threadId,
-    }),
+    JSON.stringify({ status: "success", reply: parsed.reply, thread_id: threadId }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 }
@@ -296,9 +321,6 @@ Respond ONLY in this JSON format:
 function jsonError(message: string, status: number): Response {
   return new Response(
     JSON.stringify({ error: message }),
-    {
-      status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    },
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 }
