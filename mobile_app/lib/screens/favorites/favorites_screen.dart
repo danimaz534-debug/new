@@ -121,7 +121,6 @@ class FavoritesScreen extends StatelessWidget {
                       showAppSnackBar(context, error.toString(), isError: true);
                     }
                   },
-                  isWholesale: appState.isWholesale,
                 ),
               ),
             ),

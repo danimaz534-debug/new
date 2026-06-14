@@ -1,7 +1,6 @@
 class UserAddress {
   UserAddress({
     required this.id,
-    required this.label,
     required this.fullName,
     required this.phone,
     required this.city,
@@ -13,7 +12,6 @@ class UserAddress {
   });
 
   final String id;
-  final String label;
   final String fullName;
   final String phone;
   final String city;
@@ -26,7 +24,6 @@ class UserAddress {
   factory UserAddress.fromMap(Map<String, dynamic> map) {
     return UserAddress(
       id: (map['id'] ?? '').toString(),
-      label: (map['label'] ?? '').toString(),
       fullName: (map['full_name'] ?? '').toString(),
       phone: (map['phone'] ?? '').toString(),
       city: (map['city'] ?? '').toString(),
@@ -42,7 +39,6 @@ class UserAddress {
 
   Map<String, dynamic> toMap({bool includeId = true}) {
     final map = {
-      'label': label,
       'full_name': fullName,
       'phone': phone,
       'city': city,
@@ -59,7 +55,6 @@ class UserAddress {
 
   UserAddress copyWith({
     String? id,
-    String? label,
     String? fullName,
     String? phone,
     String? city,
@@ -71,7 +66,6 @@ class UserAddress {
   }) {
     return UserAddress(
       id: id ?? this.id,
-      label: label ?? this.label,
       fullName: fullName ?? this.fullName,
       phone: phone ?? this.phone,
       city: city ?? this.city,

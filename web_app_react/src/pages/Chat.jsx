@@ -6,7 +6,7 @@ import {
   deleteChatMessages,
   subscribeToTables,
 } from "../lib/api";
-import { activityLabel, activityStatus } from "../lib/api/client";
+import { activityLabel, activityStatus, formatTimestamp, formatMessageTime } from "../lib/api/client";
 import { PageHeader, SectionCard } from "../components/ui/SectionCard";
 import useUiStore from "../store/useUiStore";
 import { t } from "../lib/i18n";
@@ -33,13 +33,13 @@ function statusCopy(thread, latestMessage, now, language = 'en') {
       return {
         label: t('awaitingReply', language),
         tone: "warning",
-        helper: t('realtimeWholesale', language),
+        helper: t('realtimeSupport', language),
       };
     }
 
     const minutes = Math.max(
       0,
-      Math.round((now - new Date(thread.last_sales_reply_at).getTime()) / 60000),
+      Math.round((now - new Date(latestMessage.created_at).getTime()) / 60000),
     );
 
     if (minutes >= 10) {
@@ -91,28 +91,36 @@ function MessageBubble({ message }) {
   const isSales = message.sender_type === 'sales' || message.sender_type === 'admin';
 
   const bubbleClass = `chat-bubble ${message.sender_type}${isAI ? ' ai-message' : ''}`;
+  const senderName = message.sender?.full_name ?? (isAI ? 'AI Assistant' : isUser ? 'Customer' : 'Sales');
+  const senderAvatar = message.sender?.avatar_url;
+  const senderInitial = (senderName?.[0] || '?').toUpperCase();
 
   return (
     <article key={message.id} className={bubbleClass}>
       <div className="message-header">
-        {isAI && (
-          <span className="ai-icon" style={{ marginRight: '6px' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
-              <circle cx="7.5" cy="14.5" r="1.5" fill="currentColor"/>
-              <circle cx="16.5" cy="14.5" r="1.5" fill="currentColor"/>
-            </svg>
-          </span>
+        {senderAvatar ? (
+          <img src={senderAvatar} alt={senderName} className="message-avatar" />
+        ) : (
+          <div className="message-avatar message-avatar-fallback">{senderInitial}</div>
         )}
-        <strong>
-          {message.sender?.full_name ??
-            message.sender?.email ??
-            (isAI ? 'AI Assistant' : isUser ? 'Customer' : 'Sales')}
-        </strong>
-        {isAI && <span className="ai-badge">AI</span>}
+        <div className="message-header-info">
+          <div className="message-sender-row">
+            {isAI && (
+              <span className="ai-icon" style={{ marginRight: '6px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                  <circle cx="7.5" cy="14.5" r="1.5" fill="currentColor"/>
+                  <circle cx="16.5" cy="14.5" r="1.5" fill="currentColor"/>
+                </svg>
+              </span>
+            )}
+            <strong>{senderName}</strong>
+            {isAI && <span className="ai-badge">AI</span>}
+          </div>
+          <small>{formatMessageTime(message.created_at)}</small>
+        </div>
       </div>
       <p>{message.message}</p>
-      <small>{new Date(message.created_at).toLocaleTimeString()}</small>
     </article>
   );
 }
@@ -247,6 +255,8 @@ export default function ChatPage() {
                 activeThread === thread.id &&
                 latestMessage?.sender_type === "user";
               const threadAiMode = thread.ai_mode_active === true;
+              const avatarUrl = thread.profiles?.avatar_url;
+              const initial = (thread.profiles?.full_name?.[0] || thread.profiles?.email?.[0] || '?').toUpperCase();
 
               return (
                 <button
@@ -255,25 +265,34 @@ export default function ChatPage() {
                   className={`thread-card${isActive ? " active" : ""}${threadAiMode ? " ai-active" : ""}`}
                   onClick={() => setActiveThread(thread.id)}
                 >
-                  <div className="thread-topline">
-                    <strong>{thread.profiles?.full_name ?? t('wholesaleUser', language)}</strong>
-                    {threadAiMode && (
-                      <span className="thread-badge ai">AI</span>
+                  <div className="thread-card-left">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={thread.profiles?.full_name || ''} className="thread-avatar" />
+                    ) : (
+                      <div className="thread-avatar thread-avatar-fallback">{initial}</div>
                     )}
-                    {waiting && !threadAiMode && (
-                      <span className="thread-badge">Waiting</span>
-                    )}
-                  </div>
-                  <span>{thread.profiles?.email ?? t('noEmail', language)}</span>
-                  <div className="thread-meta">
-                    <small>{new Date(thread.latest_message_at).toLocaleString()}</small>
-                    <small>
-                      {threadAiMode
-                        ? "AI Active"
-                        : thread.assigned_sales_id
-                          ? t('assigned', language)
-                          : t('unassigned', language)}
-                    </small>
+                    <div className="thread-card-info">
+                      <div className="thread-topline">
+                        <strong>{thread.profiles?.full_name ?? t('unnamedUser', language)}</strong>
+                        {threadAiMode && (
+                          <span className="thread-badge ai">AI</span>
+                        )}
+                        {waiting && !threadAiMode && (
+                          <span className="thread-badge">Waiting</span>
+                        )}
+                      </div>
+                      <span>{thread.profiles?.email ?? t('noEmail', language)}</span>
+                      <div className="thread-meta">
+                        <small>{formatTimestamp(thread.latest_message_at)}</small>
+                        <small>
+                          {threadAiMode
+                            ? "AI Active"
+                            : thread.assigned_sales_id
+                              ? t('assigned', language)
+                              : t('unassigned', language)}
+                        </small>
+                      </div>
+                    </div>
                   </div>
                 </button>
               );
@@ -287,24 +306,34 @@ export default function ChatPage() {
           <div className="chat-column enhanced">
             <div className="chat-column-head">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {activeConversation && (
-                  <div className="avatar-small" style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    background: isAiMode ? '#F59E0B' : 'var(--accent)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--bg)',
-                    fontWeight: 'bold',
-                    fontSize: '1.1rem'
-                  }}>
-                    {isAiMode
-                      ? '🤖'
-                      : (activeConversation.profiles?.full_name?.[0] || activeConversation.profiles?.email?.[0] || '?').toUpperCase()}
-                  </div>
-                )}
+                {activeConversation && (() => {
+                  const headerAvatarUrl = activeConversation.profiles?.avatar_url;
+                  const headerInitial = (activeConversation.profiles?.full_name?.[0] || activeConversation.profiles?.email?.[0] || '?').toUpperCase();
+                  return headerAvatarUrl ? (
+                    <img src={headerAvatarUrl} alt={activeConversation.profiles?.full_name || ''} className="avatar-small" style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: isAiMode ? '2px solid #F59E0B' : '2px solid var(--accent)',
+                    }} />
+                  ) : (
+                    <div className="avatar-small" style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: isAiMode ? '#F59E0B' : 'var(--accent)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--bg)',
+                      fontWeight: 'bold',
+                      fontSize: '1.1rem'
+                    }}>
+                      {isAiMode ? '🤖' : headerInitial}
+                    </div>
+                  );
+                })()}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <strong>
@@ -334,7 +363,7 @@ export default function ChatPage() {
               <div className="chat-head-meta">
                 {activeConversation && (
                   <small>
-                    {t('opened', language)} {new Date(activeConversation.created_at).toLocaleString()}
+                    {t('opened', language)} {formatFullDateTime(activeConversation.created_at)}
                   </small>
                 )}
                 {isAiMode && aiMessageCount > 0 && (

@@ -1,0 +1,124 @@
+@startuml sequence_order_processing
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam sequenceMessageAlign center
+skinparam dpi 150
+skinparam arrowColor #2E86AB
+skinparam lifeLineBackgroundColor #F0F8FF
+skinparam actorStyle awesome
+
+title <size:14>VoltCart - Order Processing Sequence Diagram</size>
+
+actor "Customer\n(Mobile App)" as Customer
+actor "Staff\n(Web Admin)" as Staff
+participant "Supabase\nPostgreSQL" as DB
+participant "Edge Function\n(create-user, etc)" as EdgeFn
+participant "Payment\nGateway" as Payment
+participant "Email/Notification\nService" as Notify
+
+== Add to Cart ==
+Customer -> DB : INSERT cart_items\n(user_id, product_id, quantity)
+activate DB
+DB -> DB : CHECK stock > 0
+DB --> Customer : Success / Out of Stock
+deactivate DB
+
+== Cart Management ==
+Customer -> DB : SELECT cart_items + products\n(user_id)
+activate DB
+DB --> Customer : Cart with product details, prices
+deactivate DB
+
+Customer -> DB : UPDATE cart_items\n(quantity) / DELETE
+activate DB
+DB --> Customer : Updated cart
+deactivate DB
+
+== Loyalty Discount Calculation ==
+Customer -> DB : SELECT orders (past orders for user)
+activate DB
+DB --> Customer : Past orders for loyalty calc
+deactivate DB
+
+Customer -> Customer : Calculate loyalty discount\n(1% per order, max 20%)
+
+== Address Selection ==
+Customer -> DB : SELECT user_addresses\n(user_id, is_default)
+activate DB
+DB --> Customer : List of saved addresses
+deactivate DB
+
+Customer -> Customer : Select or add new address
+
+== Checkout / Place Order ==
+Customer -> DB : SELECT cart_items + products\n(user_id)
+activate DB
+DB --> Customer : Cart items with current prices
+deactivate DB
+
+Customer -> Customer : Calculate subtotal, discounts,\nwholesale discount, total
+
+Customer -> DB : INSERT orders\n(user_id, payment_method, subtotal,\nwholesale_discount, loyalty_discount,\ntotal_amount, shipping_address, tracking_code)
+activate DB
+DB --> Customer : Order created
+deactivate DB
+
+Customer -> DB : INSERT order_items\n(order_id, product_id, quantity,\nunit_price, discount_percent)
+activate DB
+DB --> Customer : Order items created
+deactivate DB
+
+Customer -> DB : UPDATE products\n(stock = stock - quantity)
+activate DB
+DB --> Customer : Stock updated
+deactivate DB
+
+Customer -> DB : DELETE FROM cart_items\n(user_id)
+activate DB
+DB --> Customer : Cart cleared
+deactivate DB
+
+== Payment Processing ==
+Customer -> Payment : Process payment\n(Cash on Delivery / Market Payment)
+activate Payment
+Payment --> Customer : Payment confirmation
+deactivate Payment
+
+== Order Status Notification ==
+DB -> DB : TRIGGER handle_order_status_update()\n(AFTER UPDATE ON orders)
+DB -> DB : INSERT notifications\n(user_id, title, body, type='order')
+DB --> Notify : Trigger notification delivery
+
+Notify -> Customer : Push/Email notification\n"Your order is now [status]"
+
+== Order Tracking (Customer) ==
+Customer -> DB : SELECT orders + order_items\n(user_id)
+activate DB
+DB --> Customer : Order history with status
+deactivate DB
+
+== Staff Order Management ==
+Staff -> DB : SELECT orders\n(status filter, pagination)
+activate DB
+DB --> Staff : Order list
+deactivate DB
+
+Staff -> DB : UPDATE orders\n(status, tracking_code)
+activate DB
+DB -> DB : TRIGGER handle_order_status_update()
+DB -> DB : INSERT notifications
+DB --> Staff : Order updated
+deactivate DB
+
+Notify -> Customer : Push/Email notification\n"Your order is now [new status]"
+
+== Wholesale Code Redemption ==
+Customer -> DB : INSERT wholesale_codes\n(redeemed_by, redeemed_at, is_used=true)
+activate DB
+DB -> DB : CHECK code valid, not used
+DB --> Customer : Code redeemed / Invalid
+deactivate DB
+
+Customer -> Customer : Apply wholesale discount\non next order
+
+@enduml

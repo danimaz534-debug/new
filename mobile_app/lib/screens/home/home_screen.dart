@@ -111,9 +111,39 @@ class HomeScreen extends StatelessWidget {
                 ),
             ],
           ),
-          IconButton(
-            onPressed: onOpenNotifications,
-            icon: Icon(Icons.notifications_none_rounded, color: scheme.primary),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                onPressed: onOpenNotifications,
+                icon: Icon(Icons.notifications_none_rounded, color: scheme.primary),
+              ),
+              if (appState.unreadNotifications > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '${appState.unreadNotifications}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
           IconButton(
             onPressed: onOpenProfile,
@@ -567,7 +597,6 @@ class _ProductCarousel extends StatelessWidget {
                   ),
                 );
               },
-              isWholesale: appState.isWholesale,
             ),
           );
         },

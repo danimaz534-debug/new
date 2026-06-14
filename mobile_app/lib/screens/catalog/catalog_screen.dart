@@ -68,7 +68,7 @@ class CatalogScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Premium Search Bar
+
             Container(
               decoration: BoxDecoration(
                 color: sectionSurface,
@@ -103,7 +103,7 @@ class CatalogScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Category Selection
+
             Text(
               appState.text(en: 'Category', ar: 'الفئة'),
               style: TextStyle(
@@ -154,7 +154,7 @@ class CatalogScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Filters & Sorting Card
+
             Container(
               decoration: BoxDecoration(
                 color: sectionSurface,
@@ -277,7 +277,7 @@ class CatalogScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            // Results Grid
+
             LayoutBuilder(
               builder: (context, constraints) {
                 final crossAxisCount = constraints.maxWidth > 1000
@@ -360,7 +360,6 @@ class CatalogScreen extends StatelessWidget {
                           ),
                         );
                       },
-                      isWholesale: appState.isWholesale,
                     );
                   },
                 );

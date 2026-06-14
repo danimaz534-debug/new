@@ -98,6 +98,33 @@ export default function ProductsPage() {
 
   const submit = async (event) => {
     event.preventDefault();
+    
+    // Validation: name, brand, stock, image required
+    if (!editing.name || !editing.name.trim()) {
+      pushToast({ tone: 'danger', message: t('nameRequired', language) });
+      return;
+    }
+    if (!editing.brand || !editing.brand.trim()) {
+      pushToast({ tone: 'danger', message: t('brandRequired', language) });
+      return;
+    }
+    if (!editing.stock || editing.stock === '') {
+      pushToast({ tone: 'danger', message: t('stockRequired', language) });
+      return;
+    }
+    if (!editing.image_url || !editing.image_url.trim()) {
+      pushToast({ tone: 'danger', message: t('imageRequired', language) });
+      return;
+    }
+    if (Number(editing.stock) < 0) {
+      pushToast({ tone: 'danger', message: t('stockNonNegative', language) });
+      return;
+    }
+    if (Number(editing.price) <= 0) {
+      pushToast({ tone: 'danger', message: t('pricePositive', language) });
+      return;
+    }
+    
     try {
       await saveProduct(editing);
       setOpen(false);

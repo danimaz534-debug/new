@@ -13,6 +13,7 @@ import 'package:mobile_app/screens/home/home_screen.dart';
 import 'package:mobile_app/screens/notifications/notifications_screen.dart';
 import 'package:mobile_app/screens/product/product_detail_screen.dart';
 import 'package:mobile_app/screens/profile/profile_screen.dart';
+import 'package:mobile_app/core/services/notification_handler.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -63,8 +64,52 @@ class _MainShellState extends State<MainShell> {
         onRequireAuth: () {
           _onRequireAuth();
         },
+        onOpenChat: _onOpenChat,
       ),
     ];
+
+    NotificationHandler.instance.addListener(_showNotificationSnackBar);
+  }
+
+  void _showNotificationSnackBar(Map<String, dynamic> notification) {
+    if (!mounted) return;
+
+    final appState = context.read<AppStateProvider>();
+    final title = notification['title']?.toString() ?? 
+                 appState.text(en: 'Notification', ar: 'تنبيه');
+    final body = notification['body']?.toString() ?? '';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            Text(body, style: const TextStyle(color: Colors.white70)),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(12),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: appState.text(en: 'View', ar: 'عرض'),
+          textColor: const Color(0xFF38BDF8),
+          onPressed: _onOpenNotifications,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    NotificationHandler.instance.removeListener(_showNotificationSnackBar);
+    super.dispose();
   }
 
   void _onProductSelected(Product product) {
@@ -80,11 +125,7 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  void _onExploreCatalog() {
-    setState(() {
-      _selectedIndex = 1; // Switch to catalog tab
-    });
-  }
+  void _onExploreCatalog() => setState(() => _selectedIndex = 1);
 
   Future<void> _onRequireAuth() async {
     final appState = context.read<AppStateProvider>();
@@ -102,11 +143,7 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  void _onOpenChat() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const UserChatScreen()));
-  }
+  void _onOpenChat() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UserChatScreen()));
 
   void _onCheckout() {
     Navigator.of(context).push(
@@ -124,23 +161,11 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  void _onOpenNotifications() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
-  }
+  void _onOpenNotifications() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen()));
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+  void _onItemTapped(int index) => setState(() => _selectedIndex = index);
 
-  void _openProfileTab() {
-    setState(() {
-      _selectedIndex = 4;
-    });
-  }
+  void _openProfileTab() => setState(() => _selectedIndex = 4);
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +295,7 @@ class _MainShellState extends State<MainShell> {
                     clipBehavior: Clip.none,
                     children: [
                       const Icon(Icons.shopping_bag_outlined),
-                      if (appState.cart.isNotEmpty)
+                      if (appState.cartCount > 0)
                         Positioned(
                           right: -5,
                           top: -5,
@@ -285,7 +310,7 @@ class _MainShellState extends State<MainShell> {
                               minHeight: 14,
                             ),
                             child: Text(
-                              '${appState.cart.length}',
+                              '${appState.cartCount}',
                               style: const TextStyle(
                                 color: Colors.black,
                                 fontSize: 8,
@@ -301,7 +326,7 @@ class _MainShellState extends State<MainShell> {
                     clipBehavior: Clip.none,
                     children: [
                       const Icon(Icons.shopping_bag_rounded),
-                      if (appState.cart.isNotEmpty)
+                      if (appState.cartCount > 0)
                         Positioned(
                           right: -5,
                           top: -5,
@@ -316,7 +341,7 @@ class _MainShellState extends State<MainShell> {
                               minHeight: 14,
                             ),
                             child: Text(
-                              '${appState.cart.length}',
+                              '${appState.cartCount}',
                               style: const TextStyle(
                                 color: Colors.black,
                                 fontSize: 8,

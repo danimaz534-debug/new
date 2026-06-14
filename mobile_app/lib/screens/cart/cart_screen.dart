@@ -33,7 +33,8 @@ class CartScreen extends StatelessWidget {
         theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6) ??
         scheme.onSurface.withValues(alpha: 0.6);
     final shippingCost = appState.cartSubtotal >= 50 ? 0.0 : 9.99;
-    final cartPreviewTotal = appState.cartSubtotal + shippingCost;
+    final cartPreviewTotal = appState.estimatedTotal + shippingCost;
+    final hasDiscount = appState.activeDiscount > 0;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -141,6 +142,23 @@ class CartScreen extends StatelessWidget {
                           appState.text(en: 'Subtotal', ar: 'المجموع الفرعي'),
                           '\$${appState.cartSubtotal.toStringAsFixed(2)}',
                         ),
+                        if (hasDiscount) ...[
+                          const SizedBox(height: 12),
+                          _buildSummaryRow(
+                            context,
+                            appState.isWholesale
+                                ? appState.text(
+                                    en: 'Wholesale Discount (10%)',
+                                    ar: 'خصم الجملة (10%)',
+                                  )
+                                : appState.text(
+                                    en: 'Loyalty Discount (10%)',
+                                    ar: 'خصم الولاء (10%)',
+                                  ),
+                            '-\$${appState.activeDiscount.toStringAsFixed(2)}',
+                            isDiscount: true,
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         _buildSummaryRow(
                           context,
@@ -150,21 +168,7 @@ class CartScreen extends StatelessWidget {
                               : '\$${shippingCost.toStringAsFixed(2)}',
                           isGold: appState.cartSubtotal >= 50,
                         ),
-                        if (appState.isWholesale) ...[
-                          const SizedBox(height: 12),
-                          _buildSummaryRow(
-                            context,
-                            appState.text(
-                              en: 'Wholesale Discount',
-                              ar: 'خصم الجملة',
-                            ),
-                            appState.text(
-                              en: 'Shown at checkout',
-                              ar: 'يظهر عند الدفع',
-                            ),
-                            isGold: true,
-                          ),
-                        ],
+
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 20),
                           child: Divider(),
@@ -245,22 +249,29 @@ class CartScreen extends StatelessWidget {
     String label,
     String value, {
     bool isGold = false,
+    bool isDiscount = false,
   }) {
     final scheme = Theme.of(context).colorScheme;
+    Color valueColor = scheme.onSurface;
+    if (isGold) valueColor = scheme.primary;
+    if (isDiscount) valueColor = Colors.green.shade400;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: scheme.onSurface.withValues(alpha: 0.6),
+            color: isDiscount
+                ? Colors.green.shade400
+                : scheme.onSurface.withValues(alpha: 0.6),
             fontSize: 14,
+            fontWeight: isDiscount ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            color: isGold ? scheme.primary : scheme.onSurface,
+            color: valueColor,
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),

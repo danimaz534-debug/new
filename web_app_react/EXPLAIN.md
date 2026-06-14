@@ -1044,7 +1044,7 @@ function statusCopy(thread, latestMessage, now, language = 'en') {
       return {
         label: t('awaitingReply', language),
         tone: "warning",
-        helper: t('realtimeWholesale', language),
+        helper: t('realtimeSupport', language),
       };
     }
 
@@ -1158,7 +1158,7 @@ const handleKeyDown = (event) => {
           onClick={() => setActiveThread(thread.id)}
         >
           <div className="thread-topline">
-            <strong>{thread.profiles?.full_name ?? t('wholesaleUser', language)}</strong>
+            <strong>{thread.profiles?.full_name ?? t('unnamedUser', language)}</strong>
             {waiting && <span className="thread-badge">Waiting</span>}
           </div>
           <span>{thread.profiles?.email ?? t('noEmail', language)}</span>
@@ -1504,11 +1504,7 @@ const ROLE_INFO = {
     description: 'Manage products and view marketing tools',
     permissions: ['Manage products', 'View marketing tools', 'View analytics'],
   },
-  wholesale: {
-    label: 'Wholesale',
-    description: 'Wholesale customer access',
-    permissions: ['Place wholesale orders'],
-  },
+
   retail: {
     label: 'Retail',
     description: 'Standard customer access',

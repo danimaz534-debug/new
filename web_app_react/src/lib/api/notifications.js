@@ -6,6 +6,7 @@ export async function fetchNotifications() {
     const { data, error } = await client
       .from("notifications")
       .select("*")
+      .in("type", ["chat", "new_order"]) // Only show chat messages and new orders for admin
       .order("created_at", { ascending: false })
       .limit(10);
     if (error) throw error;

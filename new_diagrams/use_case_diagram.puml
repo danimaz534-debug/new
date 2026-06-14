@@ -1,0 +1,190 @@
+@startuml use_case_diagram
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam dpi 150
+skinparam actor {
+  BorderColor #336699
+  BackgroundColor #F0F8FF
+}
+skinparam usecase {
+  BorderColor #2E86AB
+  BackgroundColor #E8F4FD
+}
+skinparam package {
+  BorderColor #8B5CF6
+  BackgroundColor #F5F0FF
+}
+
+title <size:14>VoltCart - Use Case Diagram</size>
+
+actor "Customer\n(Retail/Wholesale)" as Customer
+actor "Sales Agent" as Sales
+actor "Admin" as Admin
+actor "System\n(AI/Cron)" as System
+
+package "Authentication & Profile" {
+  usecase "Sign Up / Sign In\n(Email, Google, GitHub)" as UC1
+  usecase "Guest Browse" as UC2
+  usecase "View/Edit Profile" as UC3
+  usecase "Update Avatar" as UC4
+  usecase "Change Password" as UC5
+  usecase "Manage Addresses\n(CRUD, Default)" as UC6
+  usecase "Language Preference" as UC7
+}
+
+package "Product Catalog" {
+  usecase "Browse Products\n(Phones, Accessories)" as UC8
+  usecase "Search Products" as UC9
+  usecase "Filter by Category/Brand" as UC10
+  usecase "View Product Details" as UC11
+  usecase "View Best Sellers" as UC12
+  usecase "View Featured/Hot Deals" as UC13
+  usecase "Check Stock Availability" as UC14
+}
+
+package "Shopping Cart" {
+  usecase "Add to Cart" as UC15
+  usecase "View Cart" as UC16
+  usecase "Update Quantity" as UC17
+  usecase "Remove from Cart" as UC18
+  usecase "Clear Cart" as UC19
+  usecase "View Cart Totals\n(Subtotal, Discounts)" as UC20
+}
+
+package "Checkout & Orders" {
+  usecase "Select Shipping Address" as UC21
+  usecase "Choose Payment Method\n(COD, Market Payment)" as UC22
+  usecase "Apply Loyalty Discount" as UC23
+  usecase "Apply Wholesale Code" as UC24
+  usecase "Place Order" as UC25
+  usecase "View Order History" as UC26
+  usecase "Track Order Status" as UC27
+  usecase "Receive Order Notifications" as UC28
+}
+
+package "Favorites & History" {
+  usecase "Add/Remove Favorites" as UC29
+  usecase "View Favorites" as UC30
+  usecase "View Watch History" as UC31
+}
+
+package "Chat & Support" {
+  usecase "Start Chat Thread" as UC32
+  usecase "Send Messages" as UC33
+  usecase "Receive AI Reply\n(10-min timeout)" as UC34
+  usecase "Receive Sales Reply" as UC35
+  usecase "Toggle AI Mode" as UC36
+  usecase "View Chat History" as UC37
+}
+
+package "Reviews & Ratings" {
+  usecase "Write Review\n(Rating + Comment)" as UC38
+  usecase "View Reviews" as UC39
+  usecase "Mark Helpful" as UC40
+  usecase "View Aggregate Rating" as UC41
+}
+
+package "Admin Management" {
+  usecase "Manage Users\n(CRUD, Block, Reset Pwd)" as UC42
+  usecase "Manage Products\n(CRUD, Images, Tags)" as UC43
+  usecase "Manage Orders\n(View, Update Status)" as UC44
+  usecase "Manage Chat\n(Reply, Assign, AI Toggle)" as UC45
+  usecase "View Dashboard\n(Analytics, Revenue)" as UC46
+  usecase "Broadcast Notifications" as UC47
+  usecase "Moderate Reviews" as UC48
+}
+
+package "Sales Agent Tasks" {
+  usecase "View Assigned Threads" as UC49
+  usecase "Reply to Customers" as UC50
+  usecase "Take Over from AI" as UC51
+  usecase "View Order Details" as UC52
+}
+
+package "AI & Automation" {
+  usecase "Generate AI Reply\n(Gemini 2.5 Flash)" as UC53
+  usecase "Fetch Real-time Context\n(Products, Orders)" as UC54
+  usecase "Schedule AI Timeout\n(10 min)" as UC55
+  usecase "Process Timeout Jobs\n(Cron)" as UC56
+  usecase "Create Chat Summary" as UC57
+  usecase "Send Order Notifications" as UC58
+}
+
+' Customer Use Cases
+Customer --> UC1
+Customer --> UC2
+Customer --> UC3
+Customer --> UC4
+Customer --> UC5
+Customer --> UC6
+Customer --> UC7
+Customer --> UC8
+Customer --> UC9
+Customer --> UC10
+Customer --> UC11
+Customer --> UC12
+Customer --> UC13
+Customer --> UC14
+Customer --> UC15
+Customer --> UC16
+Customer --> UC17
+Customer --> UC18
+Customer --> UC19
+Customer --> UC20
+Customer --> UC21
+Customer --> UC22
+Customer --> UC23
+Customer --> UC24
+Customer --> UC25
+Customer --> UC26
+Customer --> UC27
+Customer --> UC28
+Customer --> UC29
+Customer --> UC30
+Customer --> UC31
+Customer --> UC32
+Customer --> UC33
+Customer --> UC34
+Customer --> UC35
+Customer --> UC37
+Customer --> UC38
+Customer --> UC39
+Customer --> UC40
+Customer --> UC41
+
+' Sales Use Cases
+Sales --> UC49
+Sales --> UC50
+Sales --> UC51
+Sales --> UC52
+Sales --> UC35
+Sales --> UC36
+
+' Admin Use Cases
+Admin --> UC42
+Admin --> UC43
+Admin --> UC44
+Admin --> UC45
+Admin --> UC46
+Admin --> UC47
+Admin --> UC48
+Admin --> UC36
+
+' System Use Cases
+System --> UC53
+System --> UC54
+System --> UC55
+System --> UC56
+System --> UC57
+System --> UC58
+
+' Relationships
+UC34 .> UC55 : triggers
+UC55 .> UC56 : cron processes
+UC56 .> UC53 : calls AI
+UC53 .> UC54 : fetches context
+UC53 .> UC57 : creates summary
+UC25 .> UC58 : triggers notification
+UC44 .> UC58 : triggers notification
+
+@enduml

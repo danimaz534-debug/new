@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { Document, Packer, Paragraph, TextRun, Table, TableCell, TableRow, HeadingLevel, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Table, TableCell, TableRow, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 
 export function exportAnalyticsToPDF(analytics, language = 'en') {

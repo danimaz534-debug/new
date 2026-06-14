@@ -10,7 +10,6 @@ import useUiStore from "../store/useUiStore";
 import { t } from "../lib/i18n";
 import {
   ShieldCheck,
-  User,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -379,26 +378,41 @@ export default function SupportSummary() {
                           gap: "10px",
                         }}
                       >
-                        <div
-                          className="avatar-small"
-                          style={{
-                            width: "36px",
-                            height: "36px",
-                            borderRadius: "50%",
-                            background: "var(--primary)",
-                            color: "var(--bg)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: 700,
-                            fontSize: "0.85rem",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {s.user?.full_name?.[0] ||
-                            s.user?.email?.[0] ||
-                            "U"}
-                        </div>
+                        {s.user?.avatar_url ? (
+                          <img
+                            src={s.user.avatar_url}
+                            alt={s.user?.full_name || ''}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                              flexShrink: 0,
+                              border: "2px solid var(--border)",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="avatar-small"
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "50%",
+                              background: "var(--primary)",
+                              color: "var(--bg)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: 700,
+                              fontSize: "0.85rem",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {s.user?.full_name?.[0] ||
+                              s.user?.email?.[0] ||
+                              "U"}
+                          </div>
+                        )}
                         <div
                           style={{
                             display: "flex",
@@ -448,9 +462,24 @@ export default function SupportSummary() {
                     </td>
                     <td>
                       {s.resolver ? (
-                        <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>
-                          {s.resolver.full_name || s.resolver.email || "Admin"}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {s.resolver.avatar_url ? (
+                            <img src={s.resolver.avatar_url} alt={s.resolver.full_name || ''} style={{
+                              width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0,
+                            }} />
+                          ) : (
+                            <div style={{
+                              width: '28px', height: '28px', borderRadius: '50%', background: 'var(--accent)',
+                              color: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontWeight: 700, fontSize: '0.75rem', flexShrink: 0,
+                            }}>
+                              {(s.resolver.full_name?.[0] || s.resolver.email?.[0] || 'A').toUpperCase()}
+                            </div>
+                          )}
+                          <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>
+                            {s.resolver.full_name || s.resolver.email || "Admin"}
+                          </span>
+                        </div>
                       ) : (
                         <span style={{ color: "var(--text-faint)", fontSize: "0.85rem" }}>
                           —

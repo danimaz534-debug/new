@@ -14,8 +14,4 @@ class SupabaseConfig {
   static String get anonKey => kIsWeb
       ? const String.fromEnvironment("SUPABASE_ANON_KEY", defaultValue: _defaultAnonKey)
       : dotenv.env["SUPABASE_ANON_KEY"] ?? _defaultAnonKey;
-
-  static bool get debugMode => kIsWeb
-      ? const String.fromEnvironment("DEBUG_MODE", defaultValue: "true") == "true"
-      : dotenv.env["DEBUG_MODE"]?.toLowerCase() == "true";
 }

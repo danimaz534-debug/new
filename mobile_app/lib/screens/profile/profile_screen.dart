@@ -12,10 +12,12 @@ import 'profile_edit_screen.dart';
 import 'security_screen.dart';
 import 'wholesale_screen.dart';
 
+
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key, required this.onRequireAuth});
+  const ProfileScreen({super.key, required this.onRequireAuth, this.onOpenChat});
 
   final VoidCallback onRequireAuth;
+  final VoidCallback? onOpenChat;
 
   @override
   Widget build(BuildContext context) {
@@ -164,78 +166,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              if (!appState.isWholesale)
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const WholesaleScreen(),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          scheme.primary,
-                          scheme.primary.withValues(alpha: 0.72),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.stars_rounded,
-                          color: scheme.onPrimary,
-                          size: 30,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                appState.text(
-                                  en: 'Join Wholesale Club',
-                                  ar: 'انضم لنادي الجملة',
-                                ),
-                                style: TextStyle(
-                                  color: scheme.onPrimary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                appState.text(
-                                  en: 'Unlock wholesale pricing and a dedicated checkout experience.',
-                                  ar: 'احصل على أسعار الجملة وتجربة شراء مخصصة.',
-                                ),
-                                style: TextStyle(
-                                  color: scheme.onPrimary.withValues(
-                                    alpha: 0.8,
-                                  ),
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: scheme.onPrimary,
-                          size: 16,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 24),
+
               Container(
                 decoration: BoxDecoration(
                   color: sectionSurface,
@@ -305,6 +236,20 @@ class ProfileScreen extends StatelessWidget {
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const HelpCenterScreen(),
+                        ),
+                      ),
+                    ),
+                    _buildDivider(borderColor),
+                    _buildMenuTile(
+                      context,
+                      icon: Icons.workspace_premium_outlined,
+                      title: appState.text(
+                        en: 'Wholesale Program',
+                        ar: 'برنامج الجملة',
+                      ),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => WholesaleScreen(onOpenChat: onOpenChat),
                         ),
                       ),
                     ),

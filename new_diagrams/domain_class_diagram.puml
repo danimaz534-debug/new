@@ -1,0 +1,195 @@
+@startuml domain_class_diagram
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam linetype polyline
+skinparam dpi 150
+skinparam class {
+  BorderColor #336699
+  HeaderBackgroundColor #336699
+  HeaderFontColor White
+  FontColor #333333
+}
+
+title <size:12>VoltCart - Domain Model Class Diagram</size>
+
+class AppUser {
+  id: String
+  email: String
+  fullName: String?
+  role: String
+  isBlocked: Boolean
+  preferredLanguage: String
+  avatarUrl: String?
+  createdAt: DateTime
+  lastSeenAt: DateTime
+}
+
+class Product {
+  id: String
+  name: String
+  category: String
+  brand: String
+  price: Double
+  discountPercent: Int
+  stock: Int
+  tags: List<String>
+  imageUrl: String?
+  isBestSeller: Boolean
+  isFeatured: Boolean
+  isHotDeal: Boolean
+  createdAt: DateTime
+}
+
+class CartEntry {
+  id: String
+  userId: String
+  productId: String
+  quantity: Int
+  createdAt: DateTime
+}
+
+class Order {
+  id: String
+  userId: String
+  paymentMethod: String
+  status: String
+  trackingCode: String?
+  subtotal: Double
+  loyaltyDiscount: Double
+  totalAmount: Double
+  shippingAddress: Map?
+  createdAt: DateTime
+}
+
+class OrderItem {
+  id: String
+  orderId: String
+  productId: String
+  quantity: Int
+  unitPrice: Double
+  discountPercent: Int
+}
+
+class Favorite {
+  id: String
+  userId: String
+  productId: String
+  createdAt: DateTime
+}
+
+class WatchHistory {
+  id: String
+  userId: String
+  productId: String
+  viewedAt: DateTime
+}
+
+class UserAddress {
+  id: String
+  userId: String
+  label: String
+  fullName: String
+  phone: String
+  city: String
+  street: String
+  building: String
+  notes: String?
+  isDefault: Boolean
+}
+
+class ChatThread {
+  id: String
+  userId: String
+  assignedSalesId: String?
+  aiModeActive: Boolean
+  awaitingAdminResponse: Boolean
+  createdAt: DateTime
+}
+
+class ChatMessage {
+  id: String
+  threadId: String
+  senderId: String?
+  senderType: String
+  message: String
+  createdAt: DateTime
+}
+
+class ChatSummary {
+  id: String
+  threadId: String
+  userId: String
+  issueDescription: String
+  resolutionStatus: String
+  resolvedBy: String?
+  updatedAt: DateTime
+}
+
+class ProductComment {
+  id: String
+  userId: String
+  productId: String
+  rating: Int
+  title: String
+  comment: String?
+  isVerifiedPurchase: Boolean
+  helpfulCount: Int
+  createdAt: DateTime
+}
+
+class ProductRating {
+  id: String
+  productId: String
+  averageRating: Double
+  totalReviews: Int
+  r1Count: Int
+  r2Count: Int
+  r3Count: Int
+  r4Count: Int
+  r5Count: Int
+}
+
+class Notification {
+  id: String
+  userId: String
+  title: String
+  body: String
+  type: String
+  isRead: Boolean
+  createdAt: DateTime
+}
+
+class ScheduledJob {
+  id: String
+  threadId: String
+  jobType: String
+  scheduledAt: DateTime
+  status: String
+  attempts: Int
+}
+
+AppUser "1" --> "*" CartEntry
+AppUser "1" --> "*" Order
+AppUser "1" --> "*" Favorite
+AppUser "1" --> "*" WatchHistory
+AppUser "1" --> "*" UserAddress
+AppUser "1" --> "0..1" ChatThread
+AppUser "1" --> "*" ChatSummary
+AppUser "1" --> "*" ProductComment
+AppUser "1" --> "*" Notification
+
+Product "1" --> "*" CartEntry
+Product "1" --> "*" OrderItem
+Product "1" --> "*" Favorite
+Product "1" --> "*" WatchHistory
+Product "1" --> "*" ProductComment
+Product "1" --> "1" ProductRating
+
+Order "1" --> "*" OrderItem
+ChatThread "1" --> "*" ChatMessage
+ChatThread "1" --> "0..1" ChatSummary
+ChatThread "1" --> "*" ScheduledJob
+
+@enduml

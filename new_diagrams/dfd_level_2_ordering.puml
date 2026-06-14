@@ -1,0 +1,64 @@
+@startuml dfd_level_2_ordering
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam dpi 150
+left to right direction
+
+title <size:12>VoltCart - DFD Level 2: Order Processing</size>
+
+actor Customer as c
+actor Staff as s
+
+rectangle "3.1\nAdd to\nCart" as p31 #LightBlue
+rectangle "3.2\nManage\nCart" as p32 #LightBlue
+rectangle "3.3\nLoyalty\nDiscount" as p33 #LightBlue
+rectangle "3.4\nAddress\n& Pay" as p34 #LightBlue
+rectangle "3.5\nPlace\nOrder" as p35 #LightBlue
+rectangle "3.6\nCreate\nOrder" as p36 #LightBlue
+rectangle "3.7\nTrack\nOrder" as p37 #LightBlue
+rectangle "3.8\nUpdate\nStatus" as p38 #LightBlue
+
+database D1 as d1
+database D2 as d2
+database D3 as d3
+database D4 as d4
+database D9 as d9
+
+c --> p31 : Product, Qty
+p31 --> c : Added
+p31 --> d2 : Read product
+p31 --> d4 : Insert item
+
+c --> p32 : View/Update
+p32 --> c : Cart + totals
+p32 <--> d4 : CRUD items
+p32 --> p33 : Items
+
+p33 --> d1 : Read orders
+p33 --> d3 : Past orders
+p33 --> p32 : Discount
+
+c --> p34 : Select
+p34 --> c : Options
+p34 <--> d9 : Addresses
+
+c --> p35 : Confirm & pay
+p35 --> c : Result
+p35 --> p36 : Order data
+
+p36 --> d4 : Clear cart
+p36 --> d3 : Insert order
+
+c --> p37 : View orders
+p37 --> c : Status list
+p37 <--> d3 : Read
+
+s --> p38 : Update
+p38 --> s : Details
+p38 <--> d3 : Update
+
+p36 -> p6 : Notify customer
+p38 -> p6 : Notify status
+
+@enduml

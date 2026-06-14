@@ -4,12 +4,16 @@ export const ROLE_LABELS = {
   admin: 'Admin',
   sales: 'Sales',
   marketing: 'Marketing',
+  retail: 'Retail',
+  wholesale: 'Wholesale',
 };
 
 export const ROLE_LABELS_AR = {
   admin: 'مدير',
   sales: 'مبيعات',
   marketing: 'تسويق',
+  retail: 'تجزئة',
+  wholesale: 'جملة',
 };
 
 export function getRoleLabel(role, language = 'en') {

@@ -34,8 +34,6 @@ export default function RolesPage() {
     users: users.filter((user) => user.role === role),
   }));
 
-  const totalAdmins = users.filter((u) => u.role === 'admin').length;
-
   return (
     <div className="page-grid">
       <PageHeader eyebrow="Admin only" title="Roles" subtitle="Staff role assignments and permissions overview." />

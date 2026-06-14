@@ -1,0 +1,126 @@
+@startuml deployment_architecture
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam dpi 150
+skinparam rectangle {
+  BorderColor #336699
+  BackgroundColor #F0F8FF
+}
+skinparam node {
+  BorderColor #2E86AB
+  BackgroundColor #E8F4FD
+}
+skinparam cloud {
+  BorderColor #8B5CF6
+  BackgroundColor #F5F0FF
+}
+
+title <size:14>VoltCart - Deployment & Infrastructure Architecture</size>
+
+node "Customer Devices" {
+  [Mobile App\n(Flutter/iOS/Android)] as MobileApp
+  [Web Browser] as WebBrowser
+}
+
+node "Staff Devices" {
+  [Web Admin Dashboard\n(React/TypeScript)] as WebAdmin
+}
+
+cloud "Supabase Cloud" {
+  node "Auth Service" {
+    [Supabase Auth\n(GoTrue)] as Auth
+  }
+  
+  node "Database" {
+    [PostgreSQL\n(Primary DB)] as Postgres
+    [Realtime Engine] as Realtime
+    [Storage\n(Buckets)] as Storage
+  }
+  
+  node "Edge Functions\n(Deno Runtime)" {
+    [ai-chat-responder] as AIResponder
+    [ai-timeout-processor\n(Cron)] as AITimeout
+    [create-user] as CreateUser
+    [reset-user-password] as ResetPwd
+    [delete-chat-messages] as DeleteChat
+  }
+  
+  node "API Gateway" {
+    [PostgREST\n(REST API)] as PostgREST
+    [Realtime\n(WebSocket)] as RealtimeAPI
+  }
+}
+
+cloud "External Services" {
+  [Google Gemini 2.5\nFlash API] as Gemini
+  [Email Service\n(SendGrid/Resend)] as Email
+  [Payment Gateways] as PaymentGW
+  [Firebase/APNs\n(Push Notifications)] as Push
+}
+
+' Connections
+MobileApp --> Auth : Sign In/Up, OAuth\n(Email, Google, GitHub)
+MobileApp --> PostgREST : CRUD Operations\n(Products, Cart, Orders, Chat)
+MobileApp --> RealtimeAPI : Subscribe to changes\n(Chat, Orders, Notifications)
+MobileApp --> Storage : Upload/Download\n(Avatars, Product Images)
+MobileApp --> EdgeFn : Invoke Functions\n(AI Chat, User Mgmt)
+
+WebAdmin --> Auth : Admin Sign In
+WebAdmin --> PostgREST : Admin CRUD\n(Users, Products, Orders, Chat)
+WebAdmin --> RealtimeAPI : Live updates\n(Chat threads, Orders)
+WebAdmin --> EdgeFn : Admin Actions\n(Create User, Reset Pwd, Delete Chat)
+
+Staff --> WebAdmin : Browser Access
+
+AIResponder --> Postgres : Read/Write\n(Chat, Products, Orders, Summaries)
+AIResponder --> Gemini : Generate AI Reply\n(Context + History)
+AIResponder --> RealtimeAPI : Broadcast AI message
+
+AITimeout --> Postgres : Cron Job\n(Process pending timeouts)
+AITimeout --> AIResponder : Trigger AI Reply\n(HTTP POST)
+
+CreateUser --> Auth : Admin Create User
+CreateUser --> Postgres : Insert Profile
+
+ResetPwd --> Auth : Admin Reset Password
+
+DeleteChat --> Postgres : Delete Messages\n(Thread cleanup)
+
+Postgres --> Realtime : Change Data Capture
+Realtime --> RealtimeAPI : Broadcast to clients
+
+Auth --> Postgres : User metadata\n(JWT claims -> RLS)
+
+PostgREST --> Postgres : SQL via\nPostgREST schema
+
+' RLS Policies
+note right of Postgres
+  Row Level Security (RLS) Policies:
+  - profiles: users see own, admins see all
+  - products: public read, admin write
+  - orders: user sees own, admin sees all
+  - cart_items: user owns
+  - chat_threads: user owns, sales sees assigned
+  - chat_messages: thread participants
+  - notifications: user owns
+  - favorites/watch_history: user owns
+  - user_addresses: user owns
+  - reviews/comments: user owns, public read
+  - scheduled_jobs: service_role only
+end note
+
+' Edge Function Details
+note bottom of AIResponder
+  Runtime: Deno (Edge)
+  Trigger: HTTP + Cron
+  Secrets: GEMINI_API_KEY, SUPABASE_SERVICE_ROLE_KEY
+  Actions: handle_user_message, process_timeout, instant_ai_reply
+end note
+
+note bottom of AITimeout
+  Schedule: Every minute (pg_cron or external)
+  Queries: scheduled_jobs (pending, due)
+  Calls: process_ai_timeout RPC -> ai-chat-responder
+end note
+
+@enduml

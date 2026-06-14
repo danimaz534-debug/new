@@ -86,9 +86,55 @@ export function activityLabel(timestamp) {
 
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
+  
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    return remainingHours === 0
+      ? `last seen ${days}d ago`
+      : `last seen ${days}d ${remainingHours}h ago`;
+  }
+  
   return remainingMinutes === 0
     ? `last seen ${hours}h ago`
     : `last seen ${hours}h ${remainingMinutes}m ago`;
+}
+
+export function formatTimestamp(timestamp) {
+  if (!timestamp) return "";
+  
+  const minutes = Math.max(
+    0,
+    Math.round((Date.now() - new Date(timestamp).getTime()) / 60000),
+  );
+
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    return remainingHours === 0
+      ? `${days}d ago`
+      : `${days}d ${remainingHours}h ago`;
+  }
+  
+  return remainingMinutes === 0
+    ? `${hours}h ago`
+    : `${hours}h ${remainingMinutes}m ago`;
+}
+
+export function formatMessageTime(timestamp) {
+  if (!timestamp) return "";
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+export function formatFullDateTime(timestamp) {
+  if (!timestamp) return "";
+  return new Date(timestamp).toLocaleString();
 }
 
 let lastPresenceTouchAt = 0;

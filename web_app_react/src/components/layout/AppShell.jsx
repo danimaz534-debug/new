@@ -4,10 +4,13 @@ import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import ToastViewport from '../ui/ToastViewport';
 import useUiStore from '../../store/useUiStore';
+import useAuthStore from '../../store/useAuthStore';
 import { ArrowUp } from 'lucide-react';
 
 export default function AppShell() {
   const { theme, mobileSidebarOpen, closeMobileSidebar } = useUiStore();
+  const trackActivity = useAuthStore((state) => state.trackActivity);
+  const destroySession = useAuthStore((state) => state.destroySession);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -22,6 +25,33 @@ export default function AppShell() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Track user activity to reset session timeout
+  useEffect(() => {
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    const handleActivity = () => trackActivity();
+    
+    events.forEach(event => window.addEventListener(event, handleActivity, true));
+    return () => {
+      events.forEach(event => window.removeEventListener(event, handleActivity, true));
+    };
+  }, [trackActivity]);
+
+  // Destroy session on browser close/refresh (but not on explicit logout or navigation)
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      // Check if user explicitly logged out (set by signOut)
+      const explicitLogout = window._explicitLogout;
+      if (!explicitLogout) {
+        destroySession();
+      }
+      // Reset flag for next session
+      window._explicitLogout = false;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [destroySession]);
 
   const scrollToTop = () => {
     window.scrollTo({
@@ -43,7 +73,6 @@ export default function AppShell() {
       </div>
       <ToastViewport />
       
-      {/* Scroll to top button */}
       <button
         className={`scroll-top-button${showScrollTop ? ' visible' : ''}`}
         type="button"

@@ -1,114 +1,156 @@
-// Create user - Edge Function
-// Deploy with: supabase functions deploy create-user
+import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { corsHeaders } from '../_shared/cors.ts'
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { corsHeaders } from '../_shared/cors.ts';
-
-serve(async (req) => {
-  // Handle CORS
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    // 1. Initialize Supabase Admin Client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? ''
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing environment variables: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
       return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
-    // Create Supabase client with service role key
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.39.3');
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Verify the calling user is authenticated and is an admin
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authentication' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // 2. Parse request body
+    const body = await req.json()
+    const { email, password, full_name, role } = body
+    let { user_id } = body
+
+    // 3. Authenticate the caller
+    // First try Authorization header, then fallback to user_id in body
+    const authHeader = req.headers.get('Authorization')
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '')
+      const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token)
+      if (!authError && caller) {
+        user_id = caller.id
+      }
     }
 
-    // Get the user's profile to check if they're an admin
-    const { data: profile, error: profileError } = await supabase
+    if (!user_id) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: No user session found' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 4. Verify admin status
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    
-    if (profileError || profile?.role !== 'admin') {
+      .select('role, is_blocked')
+      .eq('id', user_id)
+      .single()
+
+    if (profileError || !profile) {
+      console.error('Verification error:', profileError)
       return new Response(
-        JSON.stringify({ error: 'Insufficient permissions - admin role required' }),
+        JSON.stringify({ error: 'Failed to verify permissions' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      )
     }
 
-    // Get the request body
-    const { email, password, full_name, role } = await req.json();
-    
+    if (profile.role !== 'admin') {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Admin role required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (profile.is_blocked) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Your account is blocked' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // 5. Validate new user data
     if (!email || !password) {
       return new Response(
         JSON.stringify({ error: 'Email and password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      )
     }
 
-    if (password.length < 6) {
+    // 6. Create the user in Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email.trim(),
+      password: password,
+      user_metadata: { full_name: full_name?.trim() ?? '' },
+      email_confirm: true
+    })
+
+    if (authError) {
+      console.error('Auth user creation error:', authError)
+      // Provide user-friendly error messages
+      let userError = authError.message;
+      if (authError.message?.includes('already registered') || authError.message?.includes('duplicate') || authError.message?.includes('already exists')) {
+        userError = 'Email already exists. Please use a different email.';
+      }
       return new Response(
-        JSON.stringify({ error: 'Password must be at least 6 characters' }),
+        JSON.stringify({ error: userError }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      )
     }
 
-    // Create the user using admin API
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: full_name || '',
-      }
-    });
-
-    if (error) {
+    const newUser = authData.user
+    if (!newUser) {
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: 'Failed to create user account' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      )
     }
 
-    // Update the user's profile with the role
-    if (data.user && role) {
-      const normalizedRole = ['admin', 'sales', 'marketing'].includes(role) ? role : 'sales';
+    // 7. Create the profile for the new user
+    const { error: profileInsertError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: newUser.id,
+        email: email.trim(),
+        full_name: full_name?.trim() ?? '',
+        role: role || 'retail',
+        preferred_language: 'en',
+        is_blocked: false
+      })
+
+    if (profileInsertError) {
+      console.error('Profile creation error:', profileInsertError)
       
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ role: normalizedRole })
-        .eq('id', data.user.id);
+      // Rollback: delete the auth user
+      await supabaseAdmin.auth.admin.deleteUser(newUser.id)
       
-      if (profileError) {
-        console.error('Failed to update profile role:', profileError);
-      }
+      return new Response(
+        JSON.stringify({ error: 'Profile creation failed: ' + profileInsertError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     return new Response(
-      JSON.stringify({ message: 'User created successfully', user: data.user }),
+      JSON.stringify({
+        message: 'User created successfully',
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          role: role || 'retail'
+        }
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    )
 
   } catch (error) {
+    console.error('Unexpected error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    )
   }
-});
+})

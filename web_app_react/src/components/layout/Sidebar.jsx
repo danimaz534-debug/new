@@ -11,7 +11,8 @@ import {
   Star,
   Users,
   X,
-  LifeBuoy
+  LifeBuoy,
+  Zap
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { NAV_ITEMS, getRoleLabel } from '../../lib/roles';
@@ -31,6 +32,7 @@ const iconMap = {
   'life-buoy': LifeBuoy,
   settings: Settings,
   star: Star,
+  zap: Zap,
 };
 
 export default function Sidebar({ mobile }) {
@@ -56,8 +58,8 @@ export default function Sidebar({ mobile }) {
     >
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <div className="icon">O&I</div>
-          {!(sidebarCollapsed && !mobile) && <span>Obsidian</span>}
+          <Zap className="icon" size={24} style={{ color: 'var(--primary)' }} />
+          {!(sidebarCollapsed && !mobile) && <span>Volt Cart</span>}
         </div>
         <div className="sidebar-controls">
           {!mobile && (

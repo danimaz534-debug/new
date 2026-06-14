@@ -1,0 +1,243 @@
+@startuml er_diagram
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam dpi 150
+skinparam linetype polyline
+
+title <size:12>VoltCart - Entity Relationship Diagram (Database Schema)</size>
+
+entity "profiles" as profiles <<Table>> {
+  * id : uuid <<PK,FK>>
+  * email : text
+  * full_name : text
+  * role : text [retail|wholesale|admin|superuser]
+  * is_blocked : boolean
+  * preferred_language : text
+  * created_at : timestamptz
+  * last_seen_at : timestamptz
+  * avatar_url : text
+}
+
+entity "products" as products <<Table>> {
+  * id : uuid <<PK>>
+  * name : text
+  * slug : text <<UK>>
+  * description : text
+  * category : text [Phones|Accessories]
+  * brand : text
+  * price : numeric
+  * discount_percent : integer
+  * stock : integer
+  * tags : text[]
+  * image_url : text
+  * is_best_seller : boolean
+  * is_featured : boolean
+  * is_hot_deal : boolean
+  * created_at : timestamptz
+}
+
+entity "cart_items" as cart_items <<Table>> {
+  * id : uuid <<PK>>
+  * user_id : uuid <<FK>>
+  * product_id : uuid <<FK>>
+  * quantity : integer
+  * created_at : timestamptz
+}
+
+entity "orders" as orders <<Table>> {
+  * id : uuid <<PK>>
+  * user_id : uuid <<FK>>
+  * payment_method : text [COD|Market]
+  * status : text [Preparing|Shipped|On the way|Delivered]
+  * tracking_code : text <<UK>>
+  * subtotal : numeric
+  * wholesale_discount : numeric
+  * loyalty_discount : numeric
+  * total_amount : numeric
+  * shipping_address : jsonb
+  * created_at : timestamptz
+}
+
+entity "order_items" as order_items <<Table>> {
+  * id : uuid <<PK>>
+  * order_id : uuid <<FK>>
+  * product_id : uuid <<FK>>
+  * quantity : integer
+  * unit_price : numeric
+  * discount_percent : integer
+}
+
+entity "favorites" as favorites <<Table>> {
+  * id : uuid <<PK>>
+  * user_id : uuid <<FK>>
+  * product_id : uuid <<FK>>
+  * created_at : timestamptz
+}
+
+entity "watch_history" as watch_history <<Table>> {
+  * id : uuid <<PK>>
+  * user_id : uuid <<FK>>
+  * product_id : uuid <<FK>>
+  * viewed_at : timestamptz
+}
+
+entity "reviews" as reviews <<Table>> {
+  * id : uuid <<PK>>
+  * user_id : uuid <<FK>>
+  * product_id : uuid <<FK>>
+  * rating : integer [1-5]
+  * comment : text
+  * created_at : timestamptz
+}
+
+entity "product_comments" as product_comments <<Table>> {
+  * id : uuid <<PK>>
+  * user_id : uuid <<FK>>
+  * product_id : uuid <<FK>>
+  * rating : integer [1-5]
+  * title : text
+  * comment : text
+  * is_verified_purchase : boolean
+  * helpful_count : integer
+  * created_at : timestamptz
+  * updated_at : timestamptz
+  * is_verified : boolean
+}
+
+entity "product_ratings" as product_ratings <<Table>> {
+  * id : uuid <<PK>>
+  * product_id : uuid <<FK,UK>>
+  * average_rating : numeric
+  * total_reviews : integer
+  * rating_1_count : integer
+  * rating_2_count : integer
+  * rating_3_count : integer
+  * rating_4_count : integer
+  * rating_5_count : integer
+  * updated_at : timestamptz
+}
+
+entity "notifications" as notifications <<Table>> {
+  * id : uuid <<PK>>
+  * user_id : uuid <<FK>>
+  * title : text
+  * body : text
+  * type : text
+  * is_read : boolean
+  * created_at : timestamptz
+}
+
+entity "chat_threads" as chat_threads <<Table>> {
+  * id : uuid <<PK>>
+  * user_id : uuid <<FK,UK>>
+  * assigned_sales_id : uuid <<FK>>
+  * last_sales_reply_at : timestamptz
+  * created_at : timestamptz
+  * ai_mode_active : boolean
+  * awaiting_admin_response : boolean
+  * pending_ai_job_id : uuid
+  * last_user_message_at : timestamptz
+  * last_admin_message_at : timestamptz
+  * last_ai_message_at : timestamptz
+}
+
+entity "chat_messages" as chat_messages <<Table>> {
+  * id : uuid <<PK>>
+  * thread_id : uuid <<FK>>
+  * sender_id : uuid <<FK>>
+  * sender_type : text [user|sales|ai|admin]
+  * message : text
+  * created_at : timestamptz
+}
+
+entity "chat_summaries" as chat_summaries <<Table>> {
+  * id : uuid <<PK>>
+  * thread_id : uuid <<FK,UK>>
+  * user_id : uuid <<FK>>
+  * issue_description : text
+  * resolution_status : text [Pending|Resolved]
+  * resolved_by : uuid <<FK>>
+  * created_at : timestamptz
+  * updated_at : timestamptz
+}
+
+entity "scheduled_jobs" as scheduled_jobs <<Table>> {
+  * id : uuid <<PK>>
+  * job_type : text
+  * thread_id : uuid <<FK>>
+  * scheduled_at : timestamptz
+  * status : text [pending|processing|completed|cancelled|failed]
+  * attempts : integer
+  * max_attempts : integer
+  * error_message : text
+  * created_at : timestamptz
+  * processed_at : timestamptz
+}
+
+entity "user_addresses" as user_addresses <<Table>> {
+  * id : uuid <<PK>>
+  * user_id : uuid <<FK>>
+  * label : text
+  * full_name : text
+  * phone : text
+  * city : text
+  * street : text
+  * building : text
+  * notes : text
+  * is_default : boolean
+  * created_at : timestamptz
+  * updated_at : timestamptz
+}
+
+entity "wholesale_codes" as wholesale_codes <<Table>> {
+  * id : uuid <<PK>>
+  * code : text <<UK>>
+  * created_by : uuid <<FK>>
+  * redeemed_by : uuid <<FK>>
+  * redeemed_at : timestamptz
+  * is_used : boolean
+  * created_at : timestamptz
+}
+
+entity "auth.users" as auth_users <<Table>> {
+  * id : uuid <<PK>>
+  * email : text
+  * encrypted_password : text
+  * role : text
+  * created_at : timestamptz
+}
+
+' Relationships
+profiles ||--o{ cart_items : "user_id"
+profiles ||--o{ orders : "user_id"
+profiles ||--o{ favorites : "user_id"
+profiles ||--o{ watch_history : "user_id"
+profiles ||--o{ reviews : "user_id"
+profiles ||--o{ product_comments : "user_id"
+profiles ||--o{ notifications : "user_id"
+profiles ||--o{ chat_threads : "user_id"
+profiles ||--o{ chat_summaries : "user_id"
+profiles ||--o{ user_addresses : "user_id"
+profiles ||--o{ wholesale_codes : "created_by"
+profiles ||--o{ wholesale_codes : "redeemed_by"
+profiles ||--o{ chat_threads : "assigned_sales_id"
+profiles ||--o{ chat_messages : "sender_id"
+profiles ||--o{ chat_summaries : "resolved_by"
+profiles ||--o{ products : "created_by"  # via wholesale_codes
+auth_users ||--|| profiles : "id"
+
+products ||--o{ cart_items : "product_id"
+products ||--o{ order_items : "product_id"
+products ||--o{ favorites : "product_id"
+products ||--o{ watch_history : "product_id"
+products ||--o{ reviews : "product_id"
+products ||--o{ product_comments : "product_id"
+products ||--|| product_ratings : "product_id"
+
+orders ||--o{ order_items : "order_id"
+
+chat_threads ||--o{ chat_messages : "thread_id"
+chat_threads ||--|| chat_summaries : "thread_id"
+chat_threads ||--o{ scheduled_jobs : "thread_id"
+
+@enduml

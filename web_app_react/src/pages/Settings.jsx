@@ -135,7 +135,7 @@ export default function SettingsPage() {
                   type="text"
                   value={formData.full_name} 
                   onChange={(e) => setFormData(p => ({ ...p, full_name: e.target.value }))}
-                  placeholder="e.g. John Doe"
+                  placeholder={t('yourName', currentLanguage)}
                 />
               </div>
 

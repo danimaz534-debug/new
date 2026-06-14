@@ -43,14 +43,6 @@ class ProfileService {
     return fetchCurrentProfile();
   }
 
-  Future<AppUser> redeemWholesaleCode(String code) async {
-    final result = await _client.rpc(
-      'redeem_wholesale_code',
-      params: {'p_code': code.trim()},
-    );
-
-    return AppUser.fromMap(Map<String, dynamic>.from(result as Map));
-  }
 
   Future<AppUser> updateProfile({
     required String fullName,

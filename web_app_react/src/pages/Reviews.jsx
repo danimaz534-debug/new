@@ -119,7 +119,6 @@ export default function ReviewsPage() {
                     <td>
                       <div className="user-cell">
                         <strong>{comment.profiles?.full_name ?? comment.profiles?.email?.split('@')[0] ?? 'Unknown user'}</strong>
-                        <small>{comment.profiles?.email ?? ''}</small>
                       </div>
                     </td>
                     <td>

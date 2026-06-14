@@ -140,10 +140,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
 
     final shippingCost = appState.cartSubtotal >= 50 ? 0.0 : 9.99;
-    final total =
-        appState.cartSubtotal +
-        shippingCost -
-        appState.estimatedWholesaleDiscount;
+    final total = appState.cartSubtotal + shippingCost - appState.estimatedLoyaltyDiscount;
 
     return Scaffold(
       appBar: AppBar(
@@ -322,19 +319,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               ),
                             ],
                           ),
-                          if (appState.isWholesale) ...[
+                          if (appState.estimatedLoyaltyDiscount > 0) ...[
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
                                   appState.text(
-                                    en: 'Wholesale Discount (10%)',
-                                    ar: 'خصم الجملة (10%)',
+                                    en: 'Loyalty Discount (10%)',
+                                    ar: 'خصم الولاء (10%)',
                                   ),
                                 ),
                                 Text(
-                                  '-\$${appState.estimatedWholesaleDiscount.toStringAsFixed(2)}',
+                                  '-\$${appState.estimatedLoyaltyDiscount.toStringAsFixed(2)}',
                                   style: const TextStyle(color: Colors.green),
                                 ),
                               ],
@@ -559,7 +556,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     .createAddress(
                                       UserAddress(
                                         id: '',
-                                        label: 'Home',
                                         fullName: fullNameCtrl.text.trim(),
                                         phone: phoneCtrl.text.trim(),
                                         city: cityCtrl.text.trim(),

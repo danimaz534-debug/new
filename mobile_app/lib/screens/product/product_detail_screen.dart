@@ -465,20 +465,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ],
                         ],
                       ),
-                      if (appState.isWholesale) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          appState.text(
-                            en: 'Wholesale discount is applied at checkout.',
-                            ar: 'يتم تطبيق خصم الجملة عند إتمام الطلب.',
-                          ),
-                          style: TextStyle(
-                            color: scheme.onSurface.withValues(alpha: 0.72),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+
                     ],
                   ),
                   const SizedBox(height: 32),

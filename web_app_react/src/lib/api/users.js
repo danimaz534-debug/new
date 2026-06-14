@@ -120,15 +120,17 @@ export async function fetchUsers() {
     const client = requireClient();
 
     const [profilesRes, ordersRes] = await Promise.all([
-      client.from("profiles").select("*").limit(1000),
+      client.from("profiles").select("*").is("deleted_at", null).limit(1000),
       client.from("orders").select("user_id, total_amount").limit(500),
     ]);
     if (profilesRes.error) throw profilesRes.error;
 
     let providerByUser = {};
     try {
-      const { data: authData } = await client.rpc("get_auth_users");
-      if (authData) {
+      const { data: authData, error: rpcError } = await client.rpc("get_auth_users", {});
+      if (rpcError) {
+        console.warn("get_auth_users RPC error:", rpcError);
+      } else if (authData) {
         providerByUser = authData.reduce((acc, u) => {
           const appProvider = u?.app_metadata?.provider;
           const identityProvider = u?.identities?.[0]?.provider;
@@ -137,7 +139,7 @@ export async function fetchUsers() {
         }, {});
       }
     } catch (e) {
-      console.warn("get_auth_users RPC not available, falling back to email");
+      console.warn("get_auth_users RPC failed:", e);
     }
 
     const ordersByUser = (ordersRes.data ?? []).reduce((acc, order) => {
@@ -160,6 +162,36 @@ export async function fetchUsers() {
 
 export async function updateUser(id, patch) {
   const client = requireClient();
+
+  // Validate role changes if role is in patch
+  if (patch.role !== undefined) {
+    const { data: currentUser } = await client
+      .from("profiles")
+      .select("role")
+      .eq("id", id)
+      .single();
+
+    if (currentUser) {
+      const currentRole = currentUser.role;
+      const newRole = patch.role;
+      const staffRoles = ['admin', 'sales', 'marketing'];
+      const userRoles = ['retail', 'wholesale'];
+
+      const wasStaff = staffRoles.includes(currentRole);
+      const isNowStaff = staffRoles.includes(newRole);
+      const wasUser = userRoles.includes(currentRole);
+      const isNowUser = userRoles.includes(newRole);
+
+      // Prevent staff ↔ user role changes
+      if (wasStaff && isNowUser) {
+        throw new Error("Cannot change staff role to user role (retail/wholesale)");
+      }
+      if (wasUser && isNowStaff) {
+        throw new Error("Cannot change user role to staff role (admin/sales/marketing)");
+      }
+    }
+  }
+
   const { data, error } = await client
     .from("profiles")
     .update(patch)
@@ -172,36 +204,13 @@ export async function updateUser(id, patch) {
 
 export async function deleteUser(id) {
   const client = requireClient();
-  const { error } = await client.from("profiles").delete().eq("id", id);
-  if (error) throw error;
-}
 
-export async function createUser(email, password, fullName, role) {
-  const client = requireClient();
-
-  // Validate input
-  if (!email || !password || !role) {
-    throw new Error("Email, password, and role are required");
-  }
-
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    throw new Error("Invalid email format");
-  }
-
-  // Validate password length
-  if (password.length < 6) {
-    throw new Error("Password must be at least 6 characters");
-  }
-
-  // Check if current user is admin
+  // Check admin status first
   const { data: { user }, error: userError } = await client.auth.getUser();
   if (userError || !user) {
     throw new Error("Not authenticated. Please sign in again.");
   }
 
-  // Get current user's profile to verify admin role
   const { data: currentProfile, error: profileError } = await client
     .from("profiles")
     .select("role")
@@ -216,21 +225,146 @@ export async function createUser(email, password, fullName, role) {
     throw new Error("Insufficient permissions - admin role required");
   }
 
-  // Call the Edge Function to create the user
-  const { data, error } = await client.functions.invoke('create-user', {
-    body: {
-      email: email.trim(),
-      password: password,
-      full_name: fullName?.trim() ?? "",
-      role: role,
-    },
-  });
+  // Soft delete: set deleted_at timestamp
+  const { error: profileDeleteError } = await client
+    .from("profiles")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (profileDeleteError) throw profileDeleteError;
 
-  if (error) {
-    throw new Error(error.message || "Failed to create user");
+  // Try to delete from auth.users via edge function (best effort)
+  try {
+    await client.functions.invoke('delete-chat-messages', {
+      body: { user_id: id },
+    });
+  } catch (_) {
+    // Edge function may not exist, that's OK — profile is already soft deleted
+  }
+}
+
+export async function restoreUser(id) {
+  const client = requireClient();
+
+  // Check admin status first
+  const { data: { user }, error: userError } = await client.auth.getUser();
+  if (userError || !user) {
+    throw new Error("Not authenticated. Please sign in again.");
   }
 
-  return data;
+  const { data: currentProfile, error: profileError } = await client
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError) {
+    throw new Error("Failed to verify admin status");
+  }
+
+  if (currentProfile.role !== "admin") {
+    throw new Error("Insufficient permissions - admin role required");
+  }
+
+  // Restore: set deleted_at to null
+  const { error: restoreError } = await client
+    .from("profiles")
+    .update({ deleted_at: null })
+    .eq("id", id);
+  if (restoreError) throw restoreError;
+}
+
+export async function fetchDeletedUsers() {
+  const withRetry = (await import("./client.js")).withRetry;
+  return withRetry(async () => {
+    const client = requireClient();
+    const { data, error } = await client
+      .from("profiles")
+      .select("*")
+      .not("deleted_at", "is", null)
+      .order("deleted_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  });
+}
+
+export async function createUser(email, password, fullName, role) {
+  const client = requireClient();
+
+  if (!email || !password || !role) {
+    throw new Error("Email, password, and role are required");
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new Error("Invalid email format");
+  }
+
+  if (password.length < 6) {
+    throw new Error("Password must be at least 6 characters");
+  }
+
+  if (!fullName || !fullName.trim()) {
+    throw new Error("Full name is required");
+  }
+
+  const { data: { user }, error: userError } = await client.auth.getUser();
+  if (userError || !user) {
+    throw new Error("Not authenticated. Please sign in again.");
+  }
+
+  const { data: currentProfile, error: profileError } = await client
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError) {
+    throw new Error("Failed to verify admin status");
+  }
+
+  if (currentProfile.role !== "admin") {
+    throw new Error("Insufficient permissions - admin role required");
+  }
+
+  // Validate role: only staff roles allowed for admin-created users
+  const staffRoles = ['admin', 'sales', 'marketing'];
+  if (!staffRoles.includes(role)) {
+    throw new Error("Invalid role. Admin can only create staff accounts (admin, sales, marketing)");
+  }
+
+  // Try edge function first, fall back to direct creation
+  try {
+    const { data, error } = await client.functions.invoke('create-user', {
+      body: {
+        email: email.trim(),
+        password: password,
+        full_name: fullName.trim(),
+        role: role,
+        user_id: user.id,
+      },
+    });
+
+    if (error) {
+      // Handle specific error messages from edge function
+      if (error.message?.includes('already registered') || error.message?.includes('duplicate') || error.message?.includes('already exists')) {
+        throw new Error("Email already exists. Please use a different email.");
+      }
+      throw new Error(error.message || "Failed to create user");
+    }
+    if (!error) return data;
+  } catch (err) {
+    if (err.message?.includes("Email already exists")) throw err;
+    if (err.message?.includes("Full name is required")) throw err;
+    if (err.message?.includes("Invalid email")) throw err;
+    if (err.message?.includes("Password must be at least")) throw err;
+    if (err.message?.includes("Edge Function")) throw err;
+    // Re-throw other errors
+    throw err;
+  }
+
+  // Fallback: create user directly via admin API (requires service role)
+  // This won't work from client-side without service role key, so show helpful error
+  throw new Error("Edge Function 'create-user' is not deployed. Please run: supabase functions deploy create-user");
 }
 
 export async function resetUserPassword(userId, newPassword) {

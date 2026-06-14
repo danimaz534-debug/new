@@ -51,7 +51,7 @@ export default function OrdersPage() {
               {filteredOrders.map((order) => (
                 <tr key={order.id}>
                   <td>{order.id.slice(0, 8)}</td>
-                  <td>{order.profiles?.full_name ?? t('wholesaleUser', language)}</td>
+                  <td>{order.profiles?.full_name ?? t('unnamedUser', language)}</td>
                   <td>{order.profiles?.email ?? t('noEmail', language)}</td>
                   <td>${Number(order.total_amount).toFixed(2)}</td>
                   <td>

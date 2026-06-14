@@ -1,0 +1,54 @@
+@startuml dfd_level_2_chat
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam dpi 150
+left to right direction
+
+title <size:12>VoltCart - DFD Level 2: Chat & Support</size>
+
+actor Customer as c
+actor Staff as s
+actor "Gemini\nAI" as ai
+
+rectangle "4.1\nInitiate" as p41 #LightBlue
+rectangle "4.2\nSend Msg" as p42 #LightBlue
+rectangle "4.3\nSchedule\nAI (10m)" as p43 #LightBlue
+rectangle "4.4\nAI Reply" as p44 #LightBlue
+rectangle "4.5\nStaff\nReply" as p45 #LightBlue
+rectangle "4.6\nSummary" as p46 #LightBlue
+
+database D5a as d5a
+database D5b as d5b
+database D11 as d11
+database D12 as d12
+
+c --> p41 : Open chat
+p41 --> d5a : Create thread
+p41 --> c : Ready
+
+c --> p42 : Send
+p42 --> d5b : Insert msg
+p42 --> p43 : Schedule
+
+p43 --> d11 : Job +10min
+p43 --> p44 : Fire
+
+p44 --> d5b : Read msgs
+p44 --> D2 : Products
+p44 --> D3 : Orders
+p44 --> ai : Prompt
+ai --> p44 : Reply
+p44 --> d5b : Insert AI
+p44 --> p46 : Summarize
+
+p46 --> d12 : Summary
+
+s --> p45 : Read thread
+s --> p45 : Reply
+p45 --> d5b : Insert sales
+p45 --> p43 : Cancel job
+p45 --> d5a : Assign
+p45 --> c : Real-time
+
+@enduml

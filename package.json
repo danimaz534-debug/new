@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "localtunnel": "^2.0.2",
-    "pg": "^8.20.0"
-  }
-}

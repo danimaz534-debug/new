@@ -1,0 +1,100 @@
+@startuml sequence_ai_chat
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam sequenceMessageAlign center
+skinparam dpi 150
+skinparam arrowColor #336699
+skinparam lifeLineBackgroundColor #F0F8FF
+skinparam actorStyle awesome
+
+title <size:14>VoltCart - AI Chat Sequence Diagram</size>
+
+actor "Customer\n(Mobile App)" as Customer
+actor "Sales/Admin\n(Web Admin)" as Staff
+participant "Supabase\nPostgreSQL" as DB
+participant "Edge Function\n(ai-chat-responder)" as EdgeFn
+participant "Gemini 2.5\nFlash API" as Gemini
+participant "Cron Job\n(ai-timeout-processor)" as Cron
+
+== Normal Chat Flow (User Message) ==
+Customer -> DB : INSERT chat_messages\n(sender_type='user')
+activate DB
+DB -> DB : TRIGGER handle_user_message()
+DB -> DB : UPDATE chat_threads\n(last_user_message_at, awaiting_admin_response=true)
+DB -> DB : INSERT scheduled_jobs\n(job_type='ai_timeout', scheduled_at=now()+10min)
+DB --> Customer : Success
+deactivate DB
+
+== AI Timeout Processing (10 minutes later) ==
+Cron -> DB : SELECT pending ai_timeout jobs
+activate DB
+DB --> Cron : List of jobs
+deactivate DB
+
+Cron -> EdgeFn : POST /functions/v1/ai-chat-responder\n{action: "process_timeout", job_id}
+activate EdgeFn
+
+EdgeFn -> DB : RPC process_ai_timeout(job_id)
+activate DB
+DB -> DB : Check thread state, last sender
+alt Last message is from user (no admin reply)
+    DB -> DB : UPDATE scheduled_jobs status=completed
+    DB -> DB : UPDATE chat_threads ai_mode_active=true
+    DB --> EdgeFn : {status: "ready", thread_id}
+else Admin already replied
+    DB -> DB : UPDATE scheduled_jobs status=completed
+    DB --> EdgeFn : {status: "skipped", reason: "admin already replied"}
+end
+deactivate DB
+
+EdgeFn -> DB : SELECT chat_messages (thread history)
+activate DB
+DB --> EdgeFn : Message history
+deactivate DB
+
+EdgeFn -> DB : SELECT products, orders (for context)
+activate DB
+DB --> EdgeFn : Product inventory + recent orders
+deactivate DB
+
+EdgeFn -> Gemini : POST generateContent\n(systemPrompt + chatHistory + dbContext)
+activate Gemini
+Gemini --> EdgeFn : {reply: "...", summary: "..."}
+deactivate Gemini
+
+EdgeFn -> DB : INSERT chat_messages\n(sender_type='ai', message=reply)
+activate DB
+DB --> EdgeFn : Success
+deactivate DB
+
+EdgeFn -> DB : UPSERT chat_summaries\n(issue_description=summary)
+activate DB
+DB --> EdgeFn : Success
+deactivate DB
+
+EdgeFn -> DB : UPDATE chat_threads ai_mode_active=true
+activate DB
+DB --> EdgeFn : Success
+deactivate DB
+
+EdgeFn --> Cron : {status: "success", reply, thread_id}
+deactivate EdgeFn
+
+== Admin/Sales Reply (Cancels AI) ==
+Staff -> DB : INSERT chat_messages\n(sender_type='sales'/'admin')
+activate DB
+DB -> DB : TRIGGER handle_admin_reply()
+DB -> DB : UPDATE chat_threads\n(ai_mode_active=false, awaiting_admin_response=false,\nassigned_sales_id, last_admin_message_at)
+DB -> DB : UPDATE scheduled_jobs\n(status='cancelled' WHERE thread_id AND pending)
+DB --> Staff : Success
+deactivate DB
+
+== AI Message Insert ==
+EdgeFn -> DB : INSERT chat_messages\n(sender_type='ai')
+activate DB
+DB -> DB : TRIGGER handle_ai_message()
+DB -> DB : UPDATE chat_threads\n(last_ai_message_at)
+DB --> EdgeFn : Success
+deactivate DB
+
+@enduml

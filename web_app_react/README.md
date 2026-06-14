@@ -101,8 +101,6 @@ voltcart-dashboard/
 #### `orders.js` - Order Management
 - `fetchOrders()` - List orders with customer info
 - `updateOrder()` - Update order status
-- `fetchWholesaleCodes()` - Get wholesale codes
-- `generateWholesaleCode()` - Generate new code
 
 #### `chat.js` - Chat System
 - `fetchChatThreads()` - List chat threads
@@ -160,7 +158,7 @@ voltcart-dashboard/
 
 ## Key Features
 
-✅ **Role-based access control** (admin, sales, marketing, wholesale, retail)
+✅ **Role-based access control** (admin, sales, marketing, retail)
 ✅ **Real-time updates** via Supabase subscriptions
 ✅ **Admin "Market Demand" analytics** (global favorite counts)
 ✅ **Avatar upload** to Supabase Storage

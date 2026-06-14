@@ -7,7 +7,6 @@ class ProductComment {
     required this.title,
     this.comment,
     required this.isVerifiedPurchase,
-    required this.helpfulCount,
     required this.createdAt,
     this.reviewerName,
   });
@@ -19,7 +18,6 @@ class ProductComment {
   final String title;
   final String? comment;
   final bool isVerifiedPurchase;
-  final int helpfulCount;
   final DateTime createdAt;
   final String? reviewerName;
 
@@ -47,20 +45,10 @@ class ProductComment {
       title: (map['title'] ?? '').toString(),
       comment: map['comment']?.toString(),
       isVerifiedPurchase: map['is_verified_purchase'] == true,
-      helpfulCount: int.tryParse((map['helpful_count'] ?? 0).toString()) ?? 0,
       createdAt: map['created_at'] == null
           ? DateTime.now()
           : DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now(),
       reviewerName: reviewerName,
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'rating': rating,
-      'title': title,
-      'comment': comment,
-      'product_id': productId,
-    };
   }
 }

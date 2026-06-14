@@ -626,7 +626,6 @@ class _AddEditAddressModalState extends State<_AddEditAddressModal> {
         await widget.appState.createAddress(
           UserAddress(
             id: '',
-            label: 'Home',
             fullName: fullNameCtrl.text.trim(),
             phone: phoneCtrl.text.trim(),
             city: cityCtrl.text.trim(),

@@ -130,8 +130,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
                                   ar: 'المساعد الذكي نشط',
                                 )
                               : appState.text(
-                                  en: 'Wholesale and order support',
-                                  ar: 'دعم الجملة والطلبات',
+                                  en: 'Order and product support',
+                                  ar: 'دعم الطلبات والمنتجات',
                                 ),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
@@ -300,8 +300,8 @@ class _UserChatScreenState extends State<UserChatScreen> {
                             vertical: 14,
                           ),
                           hintText: appState.text(
-                            en: 'Ask about orders, wholesale access, or stock...',
-                            ar: 'اسأل عن الطلبات أو الجملة أو المخزون...',
+                            en: 'Ask about orders, availability, or stock...',
+                            ar: 'اسأل عن الطلبات أو التوفر أو المخزون...',
                           ),
                         ),
                       ),
@@ -358,8 +358,8 @@ class _ChatEmptyState extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               appState.text(
-                en: 'Sales can help with wholesale upgrades, tracking updates, and product availability.',
-                ar: 'يمكن لفريق المبيعات المساعدة في ترقيات الجملة وتحديثات التتبع وتوفر المنتجات.',
+                en: 'Sales can help with tracking updates, returns, and product availability.',
+                ar: 'يمكن لفريق المبيعات المساعدة في تحديثات التتبع والإرجاع وتوفر المنتجات.',
               ),
               textAlign: TextAlign.center,
             ),

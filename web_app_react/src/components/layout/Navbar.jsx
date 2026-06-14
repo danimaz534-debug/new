@@ -36,7 +36,6 @@ export default function Navbar() {
     if (!notification.is_read) {
       try {
         await markNotificationRead(notification.id);
-        // Update local state immediately
         setNotifications((current) =>
           current.map((item) =>
             item.id === notification.id ? { ...item, is_read: true } : item
@@ -59,14 +58,13 @@ export default function Navbar() {
     }
   };
 
-  // Refetch notifications periodically to sync read status
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const data = await fetchNotifications();
         setNotifications(data);
       } catch (e) {}
-    }, 30000); // Refetch every 30 seconds
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 

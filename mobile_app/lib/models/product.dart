@@ -2,7 +2,6 @@ class Product {
   Product({
     required this.id,
     required this.name,
-    required this.slug,
     required this.description,
     required this.category,
     required this.brand,
@@ -19,7 +18,6 @@ class Product {
 
   final String id;
   final String name;
-  final String? slug;
   final String description;
   final String category;
   final String brand;
@@ -43,7 +41,6 @@ class Product {
     return Product(
       id: map['id'].toString(),
       name: (map['name'] ?? '').toString(),
-      slug: map['slug']?.toString(),
       description: (map['description'] ?? '').toString(),
       category: (map['category'] ?? '').toString(),
       brand: (map['brand'] ?? '').toString(),

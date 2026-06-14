@@ -66,66 +66,10 @@ export async function fetchProductComments() {
   });
 }
 
-export async function fetchProductRatings() {
-  const withRetry = (await import("./client.js")).withRetry;
-  return withRetry(async () => {
-    const client = requireClient();
-    const { data, error } = await client
-      .from("product_ratings")
-      .select("*")
-      .order("updated_at", { ascending: false });
-    if (error) throw error;
-    return data ?? [];
-  });
-}
-
 export async function deleteProductComment(id) {
   const client = requireClient();
   const { error } = await client.from("product_comments").delete().eq("id", id);
   if (error) throw error;
 }
 
-export async function verifyProductComment(id) {
-  const client = requireClient();
-  const { data, error } = await client
-    .from("product_comments")
-    .update({ is_verified: true })
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}
 
-export async function unverifyProductComment(id) {
-  const client = requireClient();
-  const { data, error } = await client
-    .from("product_comments")
-    .update({ is_verified: false })
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-export async function togglePurchaseVerified(id) {
-  const client = requireClient();
-  // First get current value
-  const { data: current, error: fetchError } = await client
-    .from("product_comments")
-    .select("is_verified_purchase")
-    .eq("id", id)
-    .single();
-  if (fetchError) throw fetchError;
-  
-  const newValue = !current.is_verified_purchase;
-  const { data, error } = await client
-    .from("product_comments")
-    .update({ is_verified_purchase: newValue })
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}

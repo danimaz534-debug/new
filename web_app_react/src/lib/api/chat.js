@@ -7,7 +7,7 @@ export async function fetchChatThreads() {
       .from("chat_threads")
       .select(`
         *,
-        profiles:user_id(full_name, email, last_seen_at),
+        profiles:user_id(full_name, email, last_seen_at, avatar_url),
         chat_messages(
           created_at,
           sender_type
@@ -49,7 +49,7 @@ export async function fetchMessages(threadId) {
     const client = requireClient();
     const { data, error } = await client
       .from("chat_messages")
-      .select("*, sender:sender_id(full_name, email)")
+      .select("*, sender:sender_id(full_name, email, avatar_url)")
       .eq("thread_id", threadId)
       .order("created_at")
       .limit(100);
@@ -115,7 +115,7 @@ export async function fetchChatSummaries() {
     const client = requireClient();
     const { data, error } = await client
       .from("chat_summaries")
-      .select("*, user:user_id(full_name, email), resolver:resolved_by(full_name, email)")
+      .select("*, user:user_id(full_name, email, avatar_url), resolver:resolved_by(full_name, email, avatar_url)")
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data ?? [];

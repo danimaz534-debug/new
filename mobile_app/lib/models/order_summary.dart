@@ -39,9 +39,7 @@ class OrderSummary {
     required this.id,
     required this.paymentMethod,
     required this.status,
-    required this.trackingCode,
     required this.subtotal,
-    required this.wholesaleDiscount,
     required this.loyaltyDiscount,
     required this.totalAmount,
     required this.shippingAddress,
@@ -52,9 +50,7 @@ class OrderSummary {
   final String id;
   final String paymentMethod;
   final String status;
-  final String trackingCode;
   final double subtotal;
-  final double wholesaleDiscount;
   final double loyaltyDiscount;
   final double totalAmount;
   final Map<String, dynamic> shippingAddress;
@@ -69,10 +65,7 @@ class OrderSummary {
       id: map['id'].toString(),
       paymentMethod: (map['payment_method'] ?? '').toString(),
       status: (map['status'] ?? '').toString(),
-      trackingCode: (map['tracking_code'] ?? '').toString(),
       subtotal: double.tryParse((map['subtotal'] ?? 0).toString()) ?? 0,
-      wholesaleDiscount:
-          double.tryParse((map['wholesale_discount'] ?? 0).toString()) ?? 0,
       loyaltyDiscount:
           double.tryParse((map['loyalty_discount'] ?? 0).toString()) ?? 0,
       totalAmount: double.tryParse((map['total_amount'] ?? 0).toString()) ?? 0,

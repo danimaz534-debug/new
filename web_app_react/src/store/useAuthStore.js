@@ -19,6 +19,12 @@ function _isOAuthProvider(provider) {
   return provider === "google" || provider === "github";
 }
 
+// Session timeout: 30 minutes (1800000 ms)
+const SESSION_TIMEOUT = 30 * 60 * 1000;
+
+// Global flag to track if user explicitly logged out
+let _explicitLogout = false;
+
 const useAuthStore = create((set, get) => ({
   user: null,
   role: "guest",
@@ -26,6 +32,7 @@ const useAuthStore = create((set, get) => ({
   isLoading: true,
   isChecking: false,
   error: "",
+  _activityTimer: null,
 
   async checkSession() {
     if (get().isChecking) return;
@@ -94,12 +101,34 @@ const useAuthStore = create((set, get) => ({
         isChecking: false,
         error: nextError,
       });
+
+      // Start activity timer after successful session check
+      get().resetActivityTimer();
     } catch (error) {
       set({
         user: null, role: "guest", profile: null,
         isLoading: false, isChecking: false,
         error: error?.message ?? "Failed to initialize the staff session.",
       });
+    }
+  },
+
+  resetActivityTimer() {
+    const { _activityTimer } = get();
+    if (_activityTimer) clearTimeout(_activityTimer);
+    
+    const timer = setTimeout(() => {
+      get().signOut();
+      window.location.href = "/login";
+    }, SESSION_TIMEOUT);
+    
+    set({ _activityTimer: timer });
+  },
+
+  trackActivity() {
+    // Only reset timer if user is logged in
+    if (get().role !== "guest") {
+      get().resetActivityTimer();
     }
   },
 
@@ -118,7 +147,18 @@ const useAuthStore = create((set, get) => ({
   },
 
   async signOut() {
-    set({ user: null, role: "guest", profile: null, error: "", isLoading: false });
+    const { _activityTimer } = get();
+    if (_activityTimer) clearTimeout(_activityTimer);
+    _explicitLogout = true;
+    set({ user: null, role: "guest", profile: null, error: "", isLoading: false, _activityTimer: null });
+    if (supabase) await supabase.auth.signOut();
+  },
+  
+  // Called on browser close/refresh to destroy session
+  async destroySession() {
+    const { _activityTimer } = get();
+    if (_activityTimer) clearTimeout(_activityTimer);
+    set({ user: null, role: "guest", profile: null, error: "", isLoading: false, _activityTimer: null });
     if (supabase) await supabase.auth.signOut();
   },
 }));

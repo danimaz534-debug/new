@@ -1,0 +1,161 @@
+@startuml mobile_app_class_diagram
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam linetype polyline
+skinparam dpi 150
+skinparam class {
+  BorderColor #2E86AB
+  HeaderBackgroundColor #2E86AB
+  HeaderFontColor White
+  FontColor #333333
+}
+
+title <size:12>VoltCart - Mobile App (Flutter + Provider)</size>
+
+class AppStateProvider {
+  <<ChangeNotifier>>
+  _profile: AppUser?
+  _products: List<Product>
+  _cartItems: List<CartEntry>
+  _orders: List<Order>
+  _favoriteIds: Set<String>
+  _chatThread: ChatThread?
+  _addresses: List<UserAddress>
+  ..
+  + bootstrap()
+  + signIn(email, pw)
+  + signUp(email, pw)
+  + signOut()
+  + searchProducts(query)
+  + addToCart(product, qty)
+  + updateCartQty(itemId, qty)
+  + removeFromCart(itemId)
+  + checkout(method, address)
+  + toggleFavorite(productId)
+  + sendChatMessage(text)
+  + submitReview(rating, comment)
+  + createAddress(data)
+  + updateProfile(data)
+  + recordView(productId)
+  ..
+  + isAuthenticated: Boolean
+  + cartCount: Int
+  + cartSubtotal: Double
+  + activeDiscount: Double
+  + estimatedTotal: Double
+  + unreadChatCount: Int
+  + visibleProducts
+  + text(en, ar): String
+}
+
+class AuthService {
+  + signIn(email, pw)
+  + signUp(email, pw)
+  + signInWithGoogle()
+  + signInWithGithub()
+  + signOut()
+  + updatePassword(newPw)
+  + resetPassword(email)
+}
+
+class ProfileService {
+  + fetchCurrentProfile()
+  + ensureProfile()
+  + updateProfile(patch)
+  + updateAvatar(path)
+}
+
+class CatalogService {
+  + fetchProducts()
+  + fetchProductById(id)
+}
+
+class CartService {
+  + fetchCart()
+  + addToCart(pid, qty)
+  + updateQuantity(iid, qty)
+  + removeItem(iid)
+  + clearCart()
+}
+
+class OrderService {
+  + fetchOrders()
+  + createOrderFromCart()
+}
+
+class FavoritesService {
+  + fetchFavoriteIds()
+  + addFavorite(pid)
+  + removeFavorite(pid)
+}
+
+class ChatService {
+  + ensureThread()
+  + fetchMessages(tid)
+  + sendMessage(text)
+  + triggerAiResponse()
+}
+
+class ReviewService {
+  + fetchComments(pid)
+  + fetchRating(pid)
+  + submitComment(data)
+}
+
+class AddressService {
+  + fetchUserAddresses()
+  + createAddress(data)
+  + updateAddress(id, data)
+  + deleteAddress(id)
+}
+
+class HistoryService {
+  + recordView(pid)
+  + fetchHistory()
+}
+
+class NotificationHandler {
+  <<Singleton>>
+  {static} _instance
+  + initialize(uid)
+  + markAsRead(id)
+  + dispose()
+}
+
+AppStateProvider --> AuthService
+AppStateProvider --> ProfileService
+AppStateProvider --> CatalogService
+AppStateProvider --> CartService
+AppStateProvider --> OrderService
+AppStateProvider --> FavoritesService
+AppStateProvider --> ChatService
+AppStateProvider --> ReviewService
+AppStateProvider --> AddressService
+AppStateProvider --> HistoryService
+AppStateProvider --> NotificationHandler
+
+AppStateProvider ..> AppUser : manages
+AppStateProvider ..> Product : tracks
+AppStateProvider ..> CartEntry : manages
+AppStateProvider ..> Order : manages
+AppStateProvider ..> Notification : tracks
+
+AuthService ..> AppUser
+CatalogService ..> Product
+CartService ..> CartEntry
+OrderService ..> Order
+ChatService ..> ChatThread
+ChatService ..> ChatMessage
+ReviewService ..> ProductComment
+ReviewService ..> ProductRating
+AddressService ..> UserAddress
+
+note top of AppStateProvider
+  Central orchestrator. Uses ChangeNotifier + Provider.
+  All screens consume via context.watch/read.
+  All services use SupabaseClient internally.
+end note
+
+@enduml

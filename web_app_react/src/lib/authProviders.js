@@ -27,7 +27,3 @@ export function isOAuthProvider(provider) {
   return provider === "google" || provider === "github";
 }
 
-export function canResetPassword(user) {
-  const provider = getAuthProvider(user);
-  return !isOAuthProvider(provider);
-}

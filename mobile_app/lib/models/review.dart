@@ -7,7 +7,6 @@ class Review {
     required this.comment,
     required this.createdAt,
     required this.reviewerName,
-    required this.reviewerEmail,
   });
 
   final String id;
@@ -17,7 +16,6 @@ class Review {
   final String comment;
   final DateTime? createdAt;
   final String reviewerName;
-  final String reviewerEmail;
 
   factory Review.fromMap(Map<String, dynamic> map) {
     final profile = map['profiles'];
@@ -45,7 +43,6 @@ class Review {
           ? null
           : DateTime.tryParse(map['created_at'].toString()),
       reviewerName: reviewerName,
-      reviewerEmail: (profileMap['email'] ?? '').toString(),
     );
   }
 }

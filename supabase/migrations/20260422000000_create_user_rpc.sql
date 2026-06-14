@@ -52,7 +52,7 @@ BEGIN
   END IF;
 
   -- Validate role
-  IF p_role NOT IN ('admin', 'sales', 'marketing', 'wholesale', 'retail') THEN
+  IF p_role NOT IN ('admin', 'sales', 'marketing', 'retail') THEN
     RETURN json_build_object(
       'success', false,
       'error', 'Invalid role'

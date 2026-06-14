@@ -19,8 +19,8 @@ class AppUser {
   final String? avatarUrl;
   final DateTime? createdAt;
 
+
   bool get isWholesale => role == 'wholesale';
-  bool get isRetail => role == 'retail';
   bool get isAdmin => role == 'admin' || role == 'superuser';
   String get displayName => fullName.trim().isEmpty ? email : fullName;
   String get shortRole => role[0].toUpperCase() + role.substring(1);

@@ -14,7 +14,6 @@ class ProductCard extends StatelessWidget {
     this.compact = false,
     this.isAdmin = false,
     this.favoriteCount = 0,
-    this.isWholesale = false,
   });
 
   final Product product;
@@ -25,8 +24,6 @@ class ProductCard extends StatelessWidget {
   final bool compact;
   final bool isAdmin;
   final int favoriteCount;
-  final bool isWholesale;
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -232,20 +229,6 @@ class ProductCard extends StatelessWidget {
                                           ),
                                           decoration:
                                               TextDecoration.lineThrough,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    )
-                                  else if (isWholesale)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 2),
-                                      child: Text(
-                                        'Wholesale discount at checkout',
-                                        style: TextStyle(
-                                          color: scheme.onSurface.withValues(
-                                            alpha: 0.55,
-                                          ),
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
                                         ),

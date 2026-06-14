@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class NotificationHandler {
   static final NotificationHandler _instance = NotificationHandler._internal();
 
+  static NotificationHandler get instance => _instance;
+
   factory NotificationHandler() {
     return _instance;
   }
@@ -13,7 +15,6 @@ class NotificationHandler {
 
   late SupabaseClient _client;
   RealtimeChannel? _notificationsChannel;
-  StreamSubscription? _notificationSubscription;
   String? _currentUserId;
 
   // Callbacks
@@ -90,51 +91,6 @@ class NotificationHandler {
     } catch (e) {
       debugPrint('Error fetching pending notifications: $e');
     }
-  }
-
-  Future<void> markNotificationAsRead(String notificationId) async {
-    try {
-      await _client
-          .from('notifications')
-          .update({'is_read': true})
-          .eq('id', notificationId);
-    } catch (e) {
-      debugPrint('Error marking notification as read: $e');
-    }
-  }
-
-  Future<void> markAllAsRead() async {
-    if (_currentUserId == null) return;
-
-    try {
-      await _client
-          .from('notifications')
-          .update({'is_read': true})
-          .eq('user_id', _currentUserId!)
-          .eq('is_read', false);
-    } catch (e) {
-      debugPrint('Error marking all notifications as read: $e');
-    }
-  }
-
-  Future<void> deleteNotification(String notificationId) async {
-    try {
-      await _client
-          .from('notifications')
-          .delete()
-          .eq('id', notificationId);
-    } catch (e) {
-      debugPrint('Error deleting notification: $e');
-    }
-  }
-
-  void dispose() {
-    _notificationSubscription?.cancel();
-    if (_notificationsChannel != null) {
-      _client.removeChannel(_notificationsChannel!);
-    }
-    _listeners.clear();
-    debugPrint('Notification handler disposed');
   }
 }
 

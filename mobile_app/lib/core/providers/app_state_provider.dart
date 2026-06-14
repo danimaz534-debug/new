@@ -102,6 +102,7 @@ class AppStateProvider extends ChangeNotifier {
   final Map<String, List<Review>> _reviewsByProduct = {};
   final Map<String, List<ProductComment>> _commentsByProduct = {};
   final Map<String, ProductRating?> _ratingsByProduct = {};
+  final Map<String, String> _previousOrderStatuses = {};
   List<UserAddress> _userAddresses = [];
   UserAddress? _defaultAddress;
 
@@ -121,7 +122,6 @@ class AppStateProvider extends ChangeNotifier {
   bool get isChatLoading => _chatLoading;
   bool get isAuthenticated => _authUser != null;
   bool get isGuest => _authUser == null;
-  bool get isWholesale => _profile?.isWholesale ?? false;
   bool get isAdmin => _profile?.isAdmin ?? false;
   bool get isBlocked => _isBlocked;
   User? get authUser => _authUser;
@@ -139,8 +139,7 @@ class AppStateProvider extends ChangeNotifier {
 
   List<Product> get products => List.unmodifiable(_products);
   List<CartEntry> get cartItems => List.unmodifiable(_cartItems);
-  List<CartEntry> get cartEntries => cartItems; // Alias for cartItems
-  List<CartEntry> get cart => cartItems;
+  List<CartEntry> get cartEntries => cartItems;
   Set<String> get favoriteIds => Set.unmodifiable(_favoriteIds);
 
   Map<String, int> _favoriteCounts = {};
@@ -157,23 +156,17 @@ class AppStateProvider extends ChangeNotifier {
   bool get isAwaitingAdminResponse => _chatThread?.awaitingAdminResponse ?? false;
 
   int get unreadChatCount {
+    final nonUserMessages = _chatMessages.where((m) => m.senderType != 'user').toList();
+    if (nonUserMessages.isEmpty) return 0;
+
     if (_lastChatViewedAt == null) {
-      return _chatMessages.where((m) => m.senderType != 'user').length;
+      return nonUserMessages.length;
     }
-    return _chatMessages
-        .where(
-          (m) =>
-              m.senderType != 'user' &&
-              m.createdAt != null &&
-              m.createdAt!.isAfter(_lastChatViewedAt!),
-        )
+
+    return nonUserMessages
+        .where((m) => m.createdAt != null && m.createdAt!.isAfter(_lastChatViewedAt!))
         .length;
   }
-
-  List<String> get availableBrands => [
-        'All',
-        ..._products.map((product) => product.brand).toSet().toList()..sort(),
-      ];
 
   double get maxCatalogPrice {
     if (_products.isEmpty) return 0;
@@ -248,24 +241,80 @@ class AppStateProvider extends ChangeNotifier {
       _notifications.where((item) => !item.isRead).length;
   double get cartSubtotal =>
       _cartItems.fold(0, (sum, item) => sum + item.total);
-  double get estimatedWholesaleDiscount =>
-      isWholesale ? cartSubtotal * 0.15 : 0;
-  double get estimatedLoyaltyDiscount =>
-      _orders.length >= 10 ? (cartSubtotal - estimatedWholesaleDiscount) * 0.10 : 0;
-  double get estimatedTotal => math.max(
-        cartSubtotal - estimatedWholesaleDiscount - estimatedLoyaltyDiscount,
-        0,
-      );
-  double get cartTotal => estimatedTotal;
 
-  List<Review> reviewsForProduct(String productId) =>
-      List.unmodifiable(_reviewsByProduct[productId] ?? const []);
+  /// True when the signed-in user has the 'wholesale' role.
+  bool get isWholesale => _profile?.isWholesale ?? false;
+
+  /// Wholesale users always get 10 % off.
+  double get wholesaleDiscount =>
+      isWholesale ? cartSubtotal * 0.10 : 0;
+
+  /// Loyalty discount (after 10 orders) only applies to non-wholesale users.
+  double get estimatedLoyaltyDiscount =>
+      (!isWholesale && _orders.length >= 10) ? cartSubtotal * 0.10 : 0;
+
+  /// Total active discount (the higher of wholesale or loyalty — they don't stack).
+  double get activeDiscount =>
+      isWholesale ? wholesaleDiscount : estimatedLoyaltyDiscount;
+
+  double get estimatedTotal => math.max(cartSubtotal - activeDiscount, 0);
 
   String text({
     required String en,
     required String ar,
   }) {
     return _localeCode == 'ar' ? ar : en;
+  }
+  String _translateError(String error) {
+    switch (error) {
+      case 'invalid-credentials':
+        return text(
+          en: 'Invalid email or password. Please check your credentials.',
+          ar: 'البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى التحقق من بياناتك.',
+        );
+      case 'email-not-confirmed':
+        return text(
+          en: 'Please verify your email address before signing in.',
+          ar: 'يرجى تأكيد بريدك الإلكتروني قبل تسجيل الدخول.',
+        );
+      case 'user-already-exists':
+        return text(
+          en: 'An account with this email already exists.',
+          ar: 'يوجد حساب مسجل بهذا البريد الإلكتروني بالفعل.',
+        );
+      case 'rate-limit-exceeded':
+        return text(
+          en: 'Too many attempts. Please try again later.',
+          ar: 'محاولات كثيرة جداً. يرجى المحاولة مرة أخرى لاحقاً.',
+        );
+      case 'network-error':
+        return text(
+          en: 'Network error. Please check your connection.',
+          ar: 'خطأ في الشبكة. يرجى التحقق من الاتصال.',
+        );
+      case 'oauth-error':
+        return text(
+          en: 'Authentication failed. Please try again.',
+          ar: 'فشلت عملية التحقق. يرجى المحاولة مرة أخرى.',
+        );
+      case 'Please enter a valid email address.':
+        return text(
+          en: 'Please enter a valid email address.',
+          ar: 'يرجى إدخال بريد إلكتروني صحيح.',
+        );
+      case 'Password must be at least 6 characters.':
+        return text(
+          en: 'Password must be at least 6 characters.',
+          ar: 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.',
+        );
+      case 'Please enter your full name.':
+        return text(
+          en: 'Please enter your full name.',
+          ar: 'يرجى إدخال اسمك الكامل.',
+        );
+      default:
+        return error;
+    }
   }
 
   Future<void> bootstrap() async {
@@ -281,7 +330,6 @@ class AppStateProvider extends ChangeNotifier {
     await _loadCatalog();
     await _handleAuthState(_authUser, reloadCatalog: false);
 
-    // Handle pending notifications from when app was closed
     _processPendingNotifications();
 
     _initialized = true;
@@ -294,7 +342,6 @@ class AppStateProvider extends ChangeNotifier {
     try {
       final handler = NotificationHandler();
       
-      // Set up listener for real-time notifications
       handler.addListener((notification) {
         final appNotif = AppNotification(
           id: notification['id']?.toString() ?? 'unknown',
@@ -307,14 +354,13 @@ class AppStateProvider extends ChangeNotifier {
               : DateTime.now(),
         );
         
-        _notifications.insert(0, appNotif);
-        _safeNotify();
+        if (!_notifications.any((n) => n.id == appNotif.id)) {
+          _notifications.insert(0, appNotif);
+          _safeNotify();
+        }
       });
       
-      // Fetch pending notifications from database
-      handler.fetchPendingNotifications();
-      
-      debugPrint('Notification handler initialized');
+      debugPrint('Notification listeners attached');
     } catch (e) {
       debugPrint('Error processing pending notifications: $e');
     }
@@ -364,21 +410,6 @@ class AppStateProvider extends ChangeNotifier {
     final reviews = await _reviewService.fetchReviews(productId);
     _reviewsByProduct[productId] = reviews;
     _safeNotify();
-  }
-
-  Future<void> addReview({
-    required String productId,
-    required int rating,
-    required String comment,
-  }) async {
-    await _requireAuthenticated();
-    await _ensureProfile();
-    await _reviewService.addReview(
-      productId: productId,
-      rating: rating,
-      comment: comment,
-    );
-    await loadReviews(productId);
   }
 
   Future<void> addToCart(Product product, {int quantity = 1}) async {
@@ -499,6 +530,7 @@ class AppStateProvider extends ChangeNotifier {
 
     await _chatService.sendMessage(threadId: thread.id, message: trimmed);
     _chatMessages = await _chatService.fetchMessages(thread.id);
+    _lastChatViewedAt = DateTime.now();
     _safeNotify();
     if (thread.aiModeActive) {
       unawaited(_chatService.triggerAiResponse(thread.id));
@@ -512,13 +544,6 @@ class AppStateProvider extends ChangeNotifier {
 
   void clearBlockedFlag() {
     _isBlocked = false;
-  }
-
-  Future<void> redeemWholesaleCode(String code) async {
-    await _requireAuthenticated();
-    final profile = await _profileService.redeemWholesaleCode(code);
-    _profile = profile;
-    _safeNotify();
   }
 
   Future<void> markNotificationRead(String notificationId) async {
@@ -577,18 +602,6 @@ class AppStateProvider extends ChangeNotifier {
     _safeNotify();
   }
 
-  Future<void> setLocaleCode(String localeCode) async {
-    _localeCode = localeCode;
-    await _prefs?.setString('locale_code', localeCode);
-    if (isAuthenticated && _profile != null) {
-      _profile = await _profileService.updateProfile(
-        fullName: _profile!.fullName,
-        preferredLanguage: localeCode,
-      );
-    }
-    _safeNotify();
-  }
-
   void setSearchQuery(String value) {
     _searchQuery = value;
     _safeNotify();
@@ -599,11 +612,6 @@ class AppStateProvider extends ChangeNotifier {
     if (value == 'All') {
       _selectedBrand = 'All';
     }
-    _safeNotify();
-  }
-
-  void setSelectedBrand(String value) {
-    _selectedBrand = value;
     _safeNotify();
   }
 
@@ -647,12 +655,6 @@ class AppStateProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> clearCart() async {
-    await _requireAuthenticated();
-    await _cartService.clearCart();
-    await loadCart();
-  }
-
   Future<void> loadFavorites() async {
     if (!isAuthenticated) {
       _favoriteIds = <String>{};
@@ -666,6 +668,9 @@ class AppStateProvider extends ChangeNotifier {
 
   Future<void> loadOrders() async {
     _orders = await _orderService.fetchOrders();
+    for (final order in _orders) {
+      _previousOrderStatuses[order.id] = order.status;
+    }
     _safeNotify();
   }
 
@@ -716,6 +721,7 @@ class AppStateProvider extends ChangeNotifier {
       _isBlocked = false;
       _chatThread = null;
       _chatMessages = [];
+      _previousOrderStatuses.clear();
       _lastChatViewedAt = null;
       _attachRealtimeSubscriptions();
       _safeNotify();
@@ -724,6 +730,13 @@ class AppStateProvider extends ChangeNotifier {
 
     try {
       await _ensureProfile();
+      
+      // Initialize notification handler for real-time updates
+      if (!kIsWeb) {
+        await NotificationHandler().initialize(user.id);
+        await NotificationHandler().fetchPendingNotifications();
+      }
+
       await Future.wait([
         loadCart(),
         loadFavorites(),
@@ -747,7 +760,7 @@ class AppStateProvider extends ChangeNotifier {
     try {
       await action();
     } catch (error) {
-      _lastError = error.toString().replaceFirst('Exception: ', '');
+      _lastError = _translateError(error.toString().replaceFirst('Exception: ', ''));
       rethrow;
     } finally {
       _busy = false;
@@ -762,7 +775,7 @@ class AppStateProvider extends ChangeNotifier {
       fullName:
           _authUser!.userMetadata?['full_name']?.toString() ??
           _authUser!.userMetadata?['name']?.toString(),
-      role: _profile?.role == 'wholesale' ? 'wholesale' : 'retail',
+      role: 'retail',
       language: _localeCode,
     );
   }
@@ -886,29 +899,6 @@ class AppStateProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> markNotificationAsRead(String notificationId) async {
-    try {
-      final index = _notifications.indexWhere((n) => n.id == notificationId);
-      if (index >= 0) {
-        _notifications[index] = _notifications[index].copyWith(isRead: true);
-        _safeNotify();
-      }
-    } catch (e) {
-      debugPrint('Error marking notification as read: $e');
-    }
-  }
-
-  Future<void> markAllNotificationsAsRead() async {
-    try {
-      for (int i = 0; i < _notifications.length; i++) {
-        _notifications[i] = _notifications[i].copyWith(isRead: true);
-      }
-      _safeNotify();
-    } catch (e) {
-      debugPrint('Error marking all notifications as read: $e');
-    }
-  }
-
   Future<void> _requireAuthenticated() async {
     if (_authUser == null) {
       throw StateError(
@@ -961,12 +951,49 @@ class AppStateProvider extends ChangeNotifier {
       )
       ..subscribe();
 
+    final currentUserId = _authUser?.id;
+
     final ordersChannel = client.channel('mobile-orders-sync')
       ..onPostgresChanges(
-        event: PostgresChangeEvent.all,
+        event: PostgresChangeEvent.update,
         schema: 'public',
         table: 'orders',
-        callback: (_) {
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'user_id',
+          value: currentUserId,
+        ),
+        callback: (payload) {
+          final newOrder = payload.newRecord;
+          final orderId = newOrder['id']?.toString() ?? '';
+          final newStatus = newOrder['status']?.toString() ?? '';
+
+          final previousStatus = _previousOrderStatuses[orderId];
+          if (previousStatus != null && previousStatus != newStatus) {
+            unawaited(loadNotifications());
+          }
+          _previousOrderStatuses[orderId] = newStatus;
+
+          unawaited(loadOrders());
+        },
+      )
+      ..subscribe();
+
+    final ordersInsertChannel = client.channel('mobile-orders-insert-sync')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'orders',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'user_id',
+          value: currentUserId,
+        ),
+        callback: (payload) {
+          final newOrder = payload.newRecord;
+          final orderId = newOrder['id']?.toString() ?? '';
+          final newStatus = newOrder['status']?.toString() ?? '';
+          _previousOrderStatuses[orderId] = newStatus;
           unawaited(loadOrders());
         },
       )
@@ -1017,6 +1044,7 @@ class AppStateProvider extends ChangeNotifier {
       cartChannel,
       favoriteChannel,
       ordersChannel,
+      ordersInsertChannel,
       notificationsChannel,
       chatMessagesChannel,
       chatThreadsChannel,

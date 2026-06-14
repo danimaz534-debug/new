@@ -35,15 +35,6 @@ export async function fetchDashboardData() {
 
     if (itemsError) throw itemsError;
 
-    // Fetch notifications
-    const { error: notifError } = await client
-      .from("notifications")
-      .select("id, title, body, type, created_at")
-      .order("created_at", { ascending: false })
-      .limit(8);
-
-    if (notifError) throw notifError;
-
     // Fetch favorites with product and user details
     const { data: favoritesData, error: favoritesError } = await client
       .from("favorites")
@@ -66,7 +57,7 @@ export async function fetchDashboardData() {
         created_at,
         sender_type,
         thread:thread_id (
-          user:user_id (full_name, email)
+          user:user_id (full_name, email, avatar_url)
         )
       `)
       .order("created_at", { ascending: false })
@@ -239,7 +230,7 @@ export async function fetchDashboardData() {
         {
           label: "Users",
           value: profiles.length,
-          meta: `${profiles.filter(p => ['retail', 'wholesale'].includes(p.role)).length} customers`,
+          meta: `${profiles.filter(p => p.role === 'retail').length} customers`,
           tone: "warning",
         },
         {

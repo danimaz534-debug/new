@@ -1,0 +1,82 @@
+@startuml dfd_level_1
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam dpi 150
+
+title <size:12>VoltCart - DFD Level 1 (Major Processes)</size>
+
+actor Customer as customer
+actor Staff as staff
+
+rectangle "1.0\nUser &\nAuth" as p1 #LightBlue
+rectangle "2.0\nProduct\nCatalog" as p2 #LightBlue
+rectangle "3.0\nOrder\nProcess" as p3 #LightBlue
+rectangle "4.0\nChat &\nSupport" as p4 #LightBlue
+rectangle "5.0\nReview &\nRating" as p5 #LightBlue
+rectangle "6.0\nNotif\nSystem" as p6 #LightBlue
+rectangle "7.0\nAnalytics" as p7 #LightBlue
+
+database D1 as d1
+database D2 as d2
+database D3 as d3
+database D4 as d4
+database D5 as d5
+database D6 as d6
+database D7 as d7
+database D8 as d8
+database D9 as d9
+
+' Customer flows (top)
+customer --> p1 : Sign Up/In/Guest
+customer --> p2 : Browse/Search
+customer --> p3 : Cart/Checkout
+customer --> p4 : Chat
+customer --> p5 : Reviews
+customer --> p6 : Read
+p1 --> customer : Auth/Profile
+p2 --> customer : Products
+p3 --> customer : Order/Status
+p4 --> customer : Reply
+p5 --> customer : Comments
+p6 --> customer : Push
+
+' Staff flows (right)
+staff --> p1 : Manage Users
+staff --> p2 : Manage Products
+staff --> p3 : Update Orders
+staff --> p4 : Reply/Toggle AI
+staff --> p5 : Moderate
+staff --> p6 : Broadcast
+staff --> p7 : Analytics
+p1 --> staff : User List
+p2 --> staff : Inventory
+p3 --> staff : Order Details
+p4 --> staff : Threads
+p5 --> staff : Reports
+p6 --> staff : Status
+p7 --> staff : Dashboard
+
+' Data stores (bottom)
+p1 <--> d1 : Profiles
+p2 <--> d2 : Products
+p3 <--> d3 : Orders
+p3 <--> d4 : Cart
+p4 <--> d5 : Chat
+p5 <--> d6 : Reviews
+p6 <--> d7 : Notifs
+p1 <--> d8 : Favorites
+p2 <--> d8 : Favorites
+p1 <--> d9 : Addresses
+p3 <--> d9 : Addresses
+
+' Process-to-process (horizontal flows)
+p3 --> p6 : Notify order
+p4 --> p6 : Notify chat
+p1 --> p3 : Loyalty
+p2 --> p3 : Stock/Price
+p3 --> p2 : Deplete
+p3 --> p5 : Verified
+p4 --> p5 : Summary
+
+@enduml

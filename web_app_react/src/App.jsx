@@ -31,7 +31,6 @@ function ProtectedRoute({ children, roles }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Check if user is blocked
   if (profile?.is_blocked) {
     return (
       <div className="fullscreen-state restricted-state">

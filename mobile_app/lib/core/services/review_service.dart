@@ -147,28 +147,4 @@ class ReviewService {
       throw ReviewException(message: 'Failed to submit comment');
     }
   }
-
-  Future<void> deleteComment(String commentId) async {
-    try {
-      await _client
-          .from('product_comments')
-          .delete()
-          .eq('id', commentId);
-    } catch (e) {
-      debugPrint('DEBUG: Delete comment error: $e');
-      throw ReviewException(message: 'Failed to delete comment');
-    }
-  }
-
-  Future<void> markCommentHelpful(String commentId) async {
-    try {
-      await _client
-          .from('product_comments')
-          .update({'helpful_count': 'helpful_count + 1'})
-          .eq('id', commentId);
-    } catch (e) {
-      debugPrint('DEBUG: Mark helpful error: $e');
-      throw ReviewException(message: 'Failed to mark as helpful');
-    }
-  }
 }

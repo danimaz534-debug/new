@@ -222,13 +222,6 @@ class OrderDetailsScreen extends StatelessWidget {
                     'Subtotal',
                     '\$${order.subtotal.toStringAsFixed(0)}',
                   ),
-                  if (order.wholesaleDiscount > 0)
-                    _summaryRow(
-                      context,
-                      'Wholesale Benefit',
-                      '-\$${order.wholesaleDiscount.toStringAsFixed(0)}',
-                      isHighlight: true,
-                    ),
                   if (order.loyaltyDiscount > 0)
                     _summaryRow(
                       context,

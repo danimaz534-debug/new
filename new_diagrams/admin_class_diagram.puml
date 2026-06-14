@@ -1,0 +1,160 @@
+@startuml admin_class_diagram
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam linetype polyline
+skinparam dpi 150
+skinparam class {
+  BorderColor #8B5CF6
+  HeaderBackgroundColor #8B5CF6
+  HeaderFontColor White
+  FontColor #333333
+}
+
+title <size:12>VoltCart - Web Admin & Backend</size>
+
+package "Web Admin (React + Zustand)" {
+
+  class AuthStore {
+    user: AppUser?
+    profile: AppUser?
+    isLoading: Boolean
+    error: String?
+    ..
+    + signIn(email, pw)
+    + signOut()
+    + checkSession()
+  }
+
+  class UIStore {
+    sidebarOpen: Boolean
+    activeTab: String
+    ..
+    + toggleSidebar()
+  }
+
+  class UsersAPI {
+    + fetchUsers()
+    + createUser(data)
+    + updateUser(id, data)
+    + deleteUser(id)
+    + resetUserPassword(id, pw)
+  }
+
+  class ProductsAPI {
+    + fetchProducts()
+    + saveProduct(data)
+    + deleteProduct(id)
+    + fetchFavoriteCounts()
+  }
+
+  class OrdersAPI {
+    + fetchOrders()
+    + updateOrder(id, data)
+  }
+
+  class ChatAPI {
+    + fetchThreads()
+    + fetchMessages(tid)
+    + sendSalesMessage(tid, text)
+    + deleteMessages(tid)
+    + fetchSummaries()
+    + updateSummary(id, data)
+  }
+
+  class DashboardAPI {
+    + fetchDashboardData()
+    + fetchAnalytics()
+  }
+
+  class NotificationsAPI {
+    + fetchNotifications()
+    + markRead(id)
+    + clearAll()
+  }
+
+  class FavoritesAPI {
+    + fetchFavoriteCountsByProduct()
+  }
+
+  class SupabaseClient {
+    auth: Auth
+    + from(table): QueryBuilder
+    + rpc(fn): FunctionBuilder
+    + channel(name): RealtimeChannel
+    + storage: Storage
+    ..
+    + subscribeToTables()
+  }
+
+  AuthStore --> SupabaseClient : wraps
+  AuthStore ..> UsersAPI : uses
+
+  UsersAPI .> SupabaseClient
+  ProductsAPI .> SupabaseClient
+  OrdersAPI .> SupabaseClient
+  ChatAPI .> SupabaseClient
+  DashboardAPI .> SupabaseClient
+  NotificationsAPI .> SupabaseClient
+  FavoritesAPI .> SupabaseClient
+
+  UsersAPI ..> AppUser
+  ProductsAPI ..> Product
+  OrdersAPI ..> Order
+  ChatAPI ..> ChatThread
+  ChatAPI ..> ChatMessage
+  ChatAPI ..> ChatSummary
+  NotificationsAPI ..> Notification
+}
+
+package "Supabase Backend" {
+
+  class createUser {
+    POST: Create user + profile
+  }
+
+  class resetPassword {
+    POST: Reset user password
+  }
+
+  class deleteChatMessages {
+    POST: Delete thread messages
+  }
+
+  class aiChatResponder {
+    POST: Gemini 2.5 generates reply
+    Reads products + orders for context
+  }
+
+  class aiTimeoutProcessor {
+    CRON: Process pending AI jobs
+  }
+
+  class handleUserMessage {
+    DB Trigger: on chat INSERT
+    Schedules AI timeout (10min)
+  }
+
+  class handleOrderStatus {
+    DB Trigger: on orders UPDATE
+    Creates notification
+  }
+
+  aiTimeoutProcessor ..> aiChatResponder : triggers
+  handleUserMessage ..> ScheduledJob : inserts
+  handleOrderStatus ..> Notification : creates
+}
+
+note bottom of AuthStore
+  Zustand store for web admin auth.
+  Uses SupabaseClient with RLS.
+end note
+
+note bottom of aiChatResponder
+  Deno Edge Function.
+  Uses Google Gemini 2.5 Flash.
+  Reads real-time product/order data.
+end note
+
+@enduml
