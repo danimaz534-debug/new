@@ -31,7 +31,6 @@ const iconMap = {
   'life-buoy': LifeBuoy,
   settings: Settings,
   star: Star,
-  zap: Zap,
 };
 
 export default function Sidebar({ mobile }) {
