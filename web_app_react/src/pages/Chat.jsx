@@ -6,7 +6,7 @@ import {
   deleteChatMessages,
   subscribeToTables,
 } from "../lib/api";
-import { activityLabel, activityStatus, formatTimestamp, formatMessageTime } from "../lib/api/client";
+import { activityLabel, activityStatus, formatTimestamp, formatMessageTime, formatFullDateTime } from "../lib/api/client";
 import { PageHeader, SectionCard } from "../components/ui/SectionCard";
 import useUiStore from "../store/useUiStore";
 import { t } from "../lib/i18n";
