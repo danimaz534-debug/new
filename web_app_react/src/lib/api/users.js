@@ -353,18 +353,23 @@ export async function createUser(email, password, fullName, role) {
     }
     if (!error) return data;
   } catch (err) {
+    // Handle known user-friendly errors
     if (err.message?.includes("Email already exists")) throw err;
     if (err.message?.includes("Full name is required")) throw err;
     if (err.message?.includes("Invalid email")) throw err;
     if (err.message?.includes("Password must be at least")) throw err;
+    if (err.message?.includes("Password is too weak")) throw err;
     if (err.message?.includes("Edge Function")) throw err;
-    // Re-throw other errors
-    throw err;
+    
+    // For any other errors (including internal edge function errors), show generic message
+    // Don't expose internal error details to the user
+    console.error('Create user error (hidden from user):', err);
+    throw new Error("Failed to create user. Please try again.");
   }
 
   // Fallback: create user directly via admin API (requires service role)
   // This won't work from client-side without service role key, so show helpful error
-  throw new Error("Edge Function 'create-user' is not deployed. Please run: supabase functions deploy create-user");
+  throw new Error("User creation service is temporarily unavailable. Please try again later.");
 }
 
 export async function resetUserPassword(userId, newPassword) {
@@ -407,9 +412,9 @@ export async function resetUserPassword(userId, newPassword) {
 
     if (error) {
       if (error.message?.includes("Failed to send") || error.status === 404) {
-        throw new Error("Edge Function 'reset-user-password' not found. Please deploy the Edge Function first.");
+        throw new Error("Password reset service is temporarily unavailable. Please try again later.");
       }
-      throw new Error(error.message || "Failed to reset password");
+      throw new Error("Failed to reset password. Please try again.");
     }
 
     return data;
@@ -417,6 +422,7 @@ export async function resetUserPassword(userId, newPassword) {
     if (err.message?.includes("Edge Function")) {
       throw err;
     }
-    throw new Error("Failed to reset password: " + err.message);
+    console.error('Reset password error (hidden from user):', err);
+    throw new Error("Failed to reset password. Please try again.");
   }
 }

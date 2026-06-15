@@ -93,8 +93,16 @@ Deno.serve(async (req) => {
       console.error('Auth user creation error:', authError)
       // Provide user-friendly error messages
       let userError = authError.message;
-      if (authError.message?.includes('already registered') || authError.message?.includes('duplicate') || authError.message?.includes('already exists')) {
+      const msg = authError.message?.toLowerCase() || '';
+      if (msg.includes('already registered') || msg.includes('duplicate') || msg.includes('already exists') || msg.includes('email address') || msg.includes('user already')) {
         userError = 'Email already exists. Please use a different email.';
+      } else if (msg.includes('weak password') || msg.includes('password') && msg.includes('weak')) {
+        userError = 'Password is too weak. Please use a stronger password.';
+      } else if (msg.includes('invalid email') || msg.includes('email format')) {
+        userError = 'Invalid email format. Please enter a valid email address.';
+      } else {
+        // Generic fallback - don't expose internal error details
+        userError = 'Failed to create user. Please try again.';
       }
       return new Response(
         JSON.stringify({ error: userError }),
