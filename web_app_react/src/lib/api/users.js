@@ -225,20 +225,44 @@ export async function deleteUser(id) {
     throw new Error("Insufficient permissions - admin role required");
   }
 
-  // Soft delete: set deleted_at timestamp
+  // Soft delete: set deleted_at timestamp (moves to trash)
   const { error: profileDeleteError } = await client
     .from("profiles")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (profileDeleteError) throw profileDeleteError;
+}
 
-  // Try to delete from auth.users via edge function (best effort)
-  try {
-    await client.functions.invoke('delete-chat-messages', {
-      body: { user_id: id },
-    });
-  } catch (_) {
-    // Edge function may not exist, that's OK — profile is already soft deleted
+export async function permanentlyDeleteUser(id) {
+  const client = requireClient();
+
+  // Check admin status first
+  const { data: { user }, error: userError } = await client.auth.getUser();
+  if (userError || !user) {
+    throw new Error("Not authenticated. Please sign in again.");
+  }
+
+  const { data: currentProfile, error: profileError } = await client
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError) {
+    throw new Error("Failed to verify admin status");
+  }
+
+  if (currentProfile.role !== "admin") {
+    throw new Error("Insufficient permissions - admin role required");
+  }
+
+  // Call edge function to permanently delete from auth and all data
+  const { error } = await client.functions.invoke('permanent-delete-user', {
+    body: { user_id: id },
+  });
+
+  if (error) {
+    throw new Error(error.message || "Failed to permanently delete user");
   }
 }
 
@@ -297,6 +321,12 @@ export async function createUser(email, password, fullName, role) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     throw new Error("Invalid email format");
+  }
+
+  // Email must start with a letter before @
+  const emailPrefix = email.split('@')[0];
+  if (!/^[a-zA-Z]/.test(emailPrefix)) {
+    throw new Error("Email must start with a letter");
   }
 
   if (password.length < 6) {

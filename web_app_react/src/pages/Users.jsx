@@ -5,6 +5,7 @@ import {
   subscribeToTables,
   updateUser,
   deleteUser,
+  permanentlyDeleteUser,
   restoreUser,
   createUser,
   resetUserPassword,
@@ -125,7 +126,7 @@ export default function UsersPage() {
   const handlePermanentDeleteUser = async (id) => {
     if (!window.confirm(t('confirmPermanentDelete', language))) return;
     try {
-      await deleteUser(id);
+      await permanentlyDeleteUser(id);
       pushToast({ tone: "success", message: t('userPermanentlyDeleted', language) });
       setDeletedUsers(await fetchDeletedUsers());
     } catch (error) {
@@ -190,6 +191,9 @@ export default function UsersPage() {
     if (!newUser.email || !newUser.password) { pushToast({ tone: "danger", message: t('emailPasswordRequired', language) }); return; }
     if (newUser.password.length < 6) { pushToast({ tone: "danger", message: t('passwordMinChars', language) }); return; }
     if (!newUser.fullName || !newUser.fullName.trim()) { pushToast({ tone: "danger", message: t('fullNameRequired', language) }); return; }
+    // Validate email starts with a letter
+    const emailPrefix = newUser.email.split('@')[0];
+    if (!/^[a-zA-Z]/.test(emailPrefix)) { pushToast({ tone: "danger", message: t('emailStartsWithLetter', language) }); return; }
     setIsCreating(true);
     try {
       await createUser(newUser.email, newUser.password, newUser.fullName, newUser.role);
