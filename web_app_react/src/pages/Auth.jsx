@@ -78,7 +78,6 @@ export default function AuthPage() {
       <section className="auth-card">
         <div className="auth-header">
           <div className="auth-logo">
-            <div className="icon">VC</div>
             <span>Volt Cart</span>
           </div>
           <span className="eyebrow">{t('staffUser', language)}</span>
