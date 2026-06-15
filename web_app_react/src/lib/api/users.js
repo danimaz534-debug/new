@@ -360,6 +360,10 @@ export async function createUser(email, password, fullName, role) {
     if (err.message?.includes("Password must be at least")) throw err;
     if (err.message?.includes("Password is too weak")) throw err;
     if (err.message?.includes("Edge Function")) throw err;
+    // Handle generic "non-2xx status code" from edge function
+    if (err.message?.includes("non-2xx") || err.message?.includes("non 2xx") || err.message?.includes("status code")) {
+      throw new Error("Failed to create user. Please try again.");
+    }
     
     // For any other errors (including internal edge function errors), show generic message
     // Don't expose internal error details to the user
