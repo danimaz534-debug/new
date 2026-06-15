@@ -22,9 +22,6 @@ function _isOAuthProvider(provider) {
 // Session timeout: 30 minutes (1800000 ms)
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
-// Global flag to track if user explicitly logged out
-let _explicitLogout = false;
-
 const useAuthStore = create((set, get) => ({
   user: null,
   role: "guest",
@@ -147,15 +144,6 @@ const useAuthStore = create((set, get) => ({
   },
 
   async signOut() {
-    const { _activityTimer } = get();
-    if (_activityTimer) clearTimeout(_activityTimer);
-    _explicitLogout = true;
-    set({ user: null, role: "guest", profile: null, error: "", isLoading: false, _activityTimer: null });
-    if (supabase) await supabase.auth.signOut();
-  },
-  
-  // Called on browser close/refresh to destroy session
-  async destroySession() {
     const { _activityTimer } = get();
     if (_activityTimer) clearTimeout(_activityTimer);
     set({ user: null, role: "guest", profile: null, error: "", isLoading: false, _activityTimer: null });

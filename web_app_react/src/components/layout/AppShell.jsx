@@ -10,7 +10,6 @@ import { ArrowUp } from 'lucide-react';
 export default function AppShell() {
   const { theme, mobileSidebarOpen, closeMobileSidebar } = useUiStore();
   const trackActivity = useAuthStore((state) => state.trackActivity);
-  const destroySession = useAuthStore((state) => state.destroySession);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -26,7 +25,7 @@ export default function AppShell() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Track user activity to reset session timeout
+  // Track user activity to reset session timeout (30 min inactivity)
   useEffect(() => {
     const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
     const handleActivity = () => trackActivity();
@@ -36,22 +35,6 @@ export default function AppShell() {
       events.forEach(event => window.removeEventListener(event, handleActivity, true));
     };
   }, [trackActivity]);
-
-  // Destroy session on browser close/refresh (but not on explicit logout or navigation)
-  useEffect(() => {
-    const handleBeforeUnload = (event) => {
-      // Check if user explicitly logged out (set by signOut)
-      const explicitLogout = window._explicitLogout;
-      if (!explicitLogout) {
-        destroySession();
-      }
-      // Reset flag for next session
-      window._explicitLogout = false;
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [destroySession]);
 
   const scrollToTop = () => {
     window.scrollTo({
