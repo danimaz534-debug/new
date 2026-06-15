@@ -11,8 +11,7 @@ import {
   Star,
   Users,
   X,
-  LifeBuoy,
-  Zap
+  LifeBuoy
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { NAV_ITEMS, getRoleLabel } from '../../lib/roles';
@@ -58,7 +57,6 @@ export default function Sidebar({ mobile }) {
     >
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <Zap className="icon" size={24} style={{ color: 'var(--primary)' }} />
           {!(sidebarCollapsed && !mobile) && <span>Volt Cart</span>}
         </div>
         <div className="sidebar-controls">
@@ -95,9 +93,6 @@ export default function Sidebar({ mobile }) {
       <div className="sidebar-footer">
         {!(sidebarCollapsed && !mobile) ? (
           <div className="footer-content">
-            <div className="footer-avatar">
-              {(user?.full_name?.[0] || user?.email?.[0] || 'S').toUpperCase()}
-            </div>
             <div className="footer-info">
               <div className="footer-details">
                 <strong>{user?.full_name ?? t('staffUser', language)}</strong>
@@ -108,9 +103,7 @@ export default function Sidebar({ mobile }) {
           </div>
         ) : (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0' }}>
-            <div className="footer-avatar" style={{ margin: 0 }}>
-              {(user?.full_name?.[0] || user?.email?.[0] || 'S').toUpperCase()}
-            </div>
+            <span className="role-tag">{getRoleLabel(role, language)}</span>
           </div>
         )}
       </div>
