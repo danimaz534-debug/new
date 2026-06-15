@@ -5,35 +5,11 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
 
-const authStorage = {
-  getItem: (key) => {
-    try {
-      const value = window.localStorage.getItem(key);
-      return value;
-    } catch {
-      return null;
-    }
-  },
-  setItem: (key, value) => {
-    try {
-      window.localStorage.setItem(key, value);
-    } catch {
-      // Ignore storage errors
-    }
-  },
-  removeItem: (key) => {
-    try {
-      window.localStorage.removeItem(key);
-    } catch {
-      // Ignore storage errors
-    }
-  },
-};
-
+// persistSession: false uses session cookies (cleared on browser close)
+// Don't provide custom storage so Supabase uses default cookie behavior
 export const supabase = hasSupabaseEnv
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        storage: authStorage,
         autoRefreshToken: true,
         persistSession: false,
         detectSessionInUrl: true,
