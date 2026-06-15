@@ -262,7 +262,16 @@ export async function permanentlyDeleteUser(id) {
   });
 
   if (error) {
-    throw new Error(error.message || "Failed to permanently delete user");
+    const msg = error.message?.toLowerCase() || '';
+    // Handle specific edge function errors
+    if (msg.includes('non-2xx') || msg.includes('non 2xx') || msg.includes('status code') || msg.includes('not found') || msg.includes('404')) {
+      throw new Error("Permanent delete service is not available. Please contact administrator.");
+    }
+    if (msg.includes('unauthorized') || msg.includes('401') || msg.includes('403')) {
+      throw new Error("Insufficient permissions to permanently delete user.");
+    }
+    // Generic fallback - don't expose internal error details
+    throw new Error("Failed to permanently delete user. Please try again.");
   }
 }
 

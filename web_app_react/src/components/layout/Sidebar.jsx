@@ -56,6 +56,7 @@ export default function Sidebar({ mobile }) {
     >
       <div className="sidebar-header">
         <div className="sidebar-logo">
+          <img src="/icon.png" alt="Volt Cart" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
           {!(sidebarCollapsed && !mobile) && <span>Volt Cart</span>}
         </div>
         <div className="sidebar-controls">
