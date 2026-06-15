@@ -130,7 +130,6 @@ serve(async (req) => {
     await supabase.from("orders").delete().eq("user_id", user_id);
     await supabase.from("cart_items").delete().eq("user_id", user_id);
     await supabase.from("favorites").delete().eq("user_id", user_id);
-    await supabase.from("watch_history").delete().eq("user_id", user_id);
     await supabase.from("reviews").delete().eq("user_id", user_id);
     await supabase.from("product_comments").delete().eq("user_id", user_id);
     await supabase.from("notifications").delete().eq("user_id", user_id);

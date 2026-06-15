@@ -23,7 +23,6 @@ import '../services/cart_service.dart';
 import '../services/catalog_service.dart';
 import '../services/chat_service.dart';
 import '../services/favorites_service.dart';
-import '../services/history_service.dart';
 import '../services/notification_handler.dart';
 import '../services/notifications_service.dart';
 import '../services/order_service.dart';
@@ -47,7 +46,6 @@ class AppStateProvider extends ChangeNotifier {
     NotificationsService? notificationsService,
     ChatService? chatService,
     ReviewService? reviewService,
-    HistoryService? historyService,
     AddressService? addressService,
   })  : _authService = authService ?? AuthService(),
         _profileService = profileService ?? ProfileService(),
@@ -58,7 +56,6 @@ class AppStateProvider extends ChangeNotifier {
         _notificationsService = notificationsService ?? NotificationsService(),
         _chatService = chatService ?? ChatService(),
         _reviewService = reviewService ?? ReviewService(),
-        _historyService = historyService ?? HistoryService(),
         _addressService = addressService ?? AddressService();
 
   final AuthService _authService;
@@ -70,7 +67,6 @@ class AppStateProvider extends ChangeNotifier {
   final NotificationsService _notificationsService;
   final ChatService _chatService;
   final ReviewService _reviewService;
-  final HistoryService _historyService;
   final AddressService _addressService;
 
   SharedPreferences? _prefs;
@@ -96,7 +92,7 @@ class AppStateProvider extends ChangeNotifier {
   Set<String> _favoriteIds = <String>{};
   List<OrderSummary> _orders = [];
   List<AppNotification> _notifications = [];
-  List<Product> _watchHistory = [];
+
   ChatThread? _chatThread;
   List<ChatMessage> _chatMessages = [];
   final Map<String, List<Review>> _reviewsByProduct = {};
@@ -146,7 +142,7 @@ class AppStateProvider extends ChangeNotifier {
   Map<String, int> get favoriteCounts => Map.unmodifiable(_favoriteCounts);
   List<OrderSummary> get orders => List.unmodifiable(_orders);
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
-  List<Product> get watchHistory => List.unmodifiable(_watchHistory);
+
   ChatThread? get chatThread => _chatThread;
   List<ChatMessage> get chatMessages => List.unmodifiable(_chatMessages);
   List<UserAddress> get userAddresses => List.unmodifiable(_userAddresses);
@@ -578,13 +574,6 @@ class AppStateProvider extends ChangeNotifier {
     _safeNotify();
   }
 
-  Future<void> recordProductView(Product product) async {
-    if (!isAuthenticated) return;
-    await _historyService.recordView(product.id);
-    _watchHistory = await _historyService.fetchHistory();
-    _safeNotify();
-  }
-
   Future<void> changePassword(String newPassword) async {
     await _requireAuthenticated();
     await _authService.updatePassword(newPassword);
@@ -693,11 +682,6 @@ class AppStateProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadWatchHistory() async {
-    _watchHistory = await _historyService.fetchHistory();
-    _safeNotify();
-  }
-
   Future<void> _handleAuthState(
     User? user, {
     bool reloadCatalog = true,
@@ -713,11 +697,10 @@ class AppStateProvider extends ChangeNotifier {
     if (user == null) {
       _profile = null;
       _cartItems = [];
-      _favoriteIds = <String>{};
+      _favoriteIds = <String = <String>{};
       _favoriteCounts = {};
       _orders = [];
       _notifications = [];
-      _watchHistory = [];
       _isBlocked = false;
       _chatThread = null;
       _chatMessages = [];
