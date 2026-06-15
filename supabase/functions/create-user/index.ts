@@ -14,8 +14,8 @@ Deno.serve(async (req) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('Missing environment variables: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
       return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Server configuration error' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -39,8 +39,8 @@ Deno.serve(async (req) => {
 
     if (!user_id) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized: No user session found' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Unauthorized: No user session found' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -54,30 +54,30 @@ Deno.serve(async (req) => {
     if (profileError || !profile) {
       console.error('Verification error:', profileError)
       return new Response(
-        JSON.stringify({ error: 'Failed to verify permissions' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Failed to verify permissions' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (profile.role !== 'admin') {
       return new Response(
-        JSON.stringify({ error: 'Forbidden: Admin role required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Forbidden: Admin role required' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (profile.is_blocked) {
       return new Response(
-        JSON.stringify({ error: 'Forbidden: Your account is blocked' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Forbidden: Your account is blocked' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     // 5. Validate new user data
     if (!email || !password) {
       return new Response(
-        JSON.stringify({ error: 'Email and password are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Email and password are required' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -104,17 +104,18 @@ Deno.serve(async (req) => {
         // Generic fallback - don't expose internal error details
         userError = 'Failed to create user. Please try again.';
       }
+      // Always return 200 so client doesn't throw exception
       return new Response(
-        JSON.stringify({ error: userError }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: userError }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     const newUser = authData.user
     if (!newUser) {
       return new Response(
-        JSON.stringify({ error: 'Failed to create user account' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Failed to create user account' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -137,13 +138,14 @@ Deno.serve(async (req) => {
       await supabaseAdmin.auth.admin.deleteUser(newUser.id)
       
       return new Response(
-        JSON.stringify({ error: 'Profile creation failed: ' + profileInsertError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Failed to create user profile. Please try again.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     return new Response(
       JSON.stringify({
+        success: true,
         message: 'User created successfully',
         user: {
           id: newUser.id,
@@ -157,8 +159,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Unexpected error:', error)
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: 'Failed to create user. Please try again.' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })

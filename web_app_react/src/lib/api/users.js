@@ -383,14 +383,28 @@ export async function createUser(email, password, fullName, role) {
       },
     });
 
+    // Handle new response format: { success: true/false, error: "...", message: "...", user: {...} }
     if (error) {
-      // Handle specific error messages from edge function
-      if (error.message?.includes('already registered') || error.message?.includes('duplicate') || error.message?.includes('already exists')) {
-        throw new Error("Email already exists. Please use a different email.");
-      }
       throw new Error(error.message || "Failed to create user");
     }
-    if (!error) return data;
+    
+    if (data?.success === false) {
+      // Handle specific error messages from edge function
+      if (data.error?.includes('already registered') || data.error?.includes('duplicate') || data.error?.includes('already exists') || data.error?.includes('email already exists')) {
+        throw new Error("Email already exists. Please use a different email.");
+      }
+      if (data.error?.includes('weak password') || data.error?.includes('password is too weak')) {
+        throw new Error("Password is too weak. Please use a stronger password.");
+      }
+      if (data.error?.includes('invalid email') || data.error?.includes('email format')) {
+        throw new Error("Invalid email format. Please enter a valid email address.");
+      }
+      throw new Error(data.error || "Failed to create user");
+    }
+    
+    if (data?.success === true) {
+      return data;
+    }
   } catch (err) {
     // Handle known user-friendly errors
     if (err.message?.includes("Email already exists")) throw err;
