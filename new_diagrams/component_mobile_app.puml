@@ -1,0 +1,139 @@
+@startuml component_mobile_app
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam dpi 150
+skinparam componentStyle rectangle
+skinparam rectangle {
+  BorderColor #2E86AB
+  BackgroundColor #E8F4FD
+}
+skinparam interface {
+  BorderColor #2E86AB
+  BackgroundColor #E8F4FD
+}
+
+title <size:14>VoltCart - Mobile App Component Architecture</title>
+
+package "Presentation Layer" {
+    [Screens] as Screens
+    [Widgets] as Widgets
+    [Theme] as Theme
+}
+
+package "State Management" {
+    [AppStateProvider\n(ChangeNotifier)] as AppState
+    [AuthService] as AuthSvc
+    [CatalogService] as CatalogSvc
+    [CartService] as CartSvc
+    [OrderService] as OrderSvc
+    [FavoritesService] as FavSvc
+    [ChatService] as ChatSvc
+    [ReviewService] as RevSvc
+    [AddressService] as AddrSvc
+    [NotificationHandler] as Notif
+    [HistoryService] as Hist
+    [ProfileService] as Prof
+}
+
+package "Data Layer" {
+    [Supabase\nClient] as SBClient
+    [Auth\nRepository] as AuthRepo
+    [Database\nRepository] as DBRepo
+    [Storage\nRepository] as StorRepo
+    [Realtime\nSubscription] as RTSub
+    [Edge\nFunctions] as EdgeFn
+}
+
+package "Models" {
+    [AppUser] as MUser
+    [Product] as MProd
+    [CartEntry] as MCart
+    [Order] as MOrder
+    [OrderItem] as MOrderItem
+    [Favorite] as MFav
+    [ChatThread] as MThread
+    [ChatMessage] as MMsg
+    [OrderSummary] as MSum
+    [UserAddress] as MAddr
+    [Review] as MRev
+    [ProductComment] as MComm
+    [ProductRating] as MRating
+    [AppNotification] as MNotif
+    [ShippingAddress] as MShip
+}
+
+package "External" {
+    [Supabase\nAuth] as ExtAuth
+    [Supabase\nPostgreSQL] as ExtDB
+    [Supabase\nRealtime] as ExtRT
+    [Supabase\nStorage] as ExtStor
+    [Edge\nFunctions] as ExtEdge
+    [Google\nGemini AI] as ExtAI
+    [FCM/APNs\nPush] as ExtPush
+}
+
+' Connections
+Screens --> AppState
+Screens --> Widgets
+Widgets --> Theme
+
+AppState --> AuthSvc
+AppState --> CatalogSvc
+AppState --> CartSvc
+AppState --> OrderSvc
+AppState --> Fav
+AppState --> ChatSvc
+AppState --> RevSvc
+AppState --> AddrSvc
+AppState --> Notif
+AppState --> Hist
+AppState --> Prof
+
+AuthSvc --> SBClient
+CatalogSvc --> SBClient
+CartSvc --> SBClient
+OrderSvc --> SBClient
+Fav --> SBClient
+ChatSvc --> SBClient
+RevSvc --> SBClient
+AddrSvc --> SBClient
+Notif --> SBClient
+Hist --> SBClient
+Prof --> SBClient
+
+SBClient --> ExtAuth
+SBClient --> ExtDB
+SBClient --> ExtRT
+SBClient --> ExtStor
+SBClient --> ExtEdge
+SBClient --> ExtAI
+SBClient --> ExtPush
+
+AppState ..> MUser
+AppState ..> MProd
+AppState ..> MCart
+AppState ..> MOrder
+AppState ..> MThread
+AppState ..> MMsg
+AppState ..> MSum
+AppState ..> MAddr
+AppState ..> MRev
+AppState ..> MComm
+AppState ..> MRating
+AppState ..> MNotif
+AppState ..> MShip
+
+' Data Flow
+note right of AppState
+  Central orchestrator
+  Uses ChangeNotifier + Provider
+  All screens consume via context.watch/read
+end note
+
+note bottom of SBClient
+  Single Supabase client instance
+  Configured with anon key + auth storage
+  Auto-refresh token + persist session
+end note
+
+@enduml

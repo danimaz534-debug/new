@@ -138,6 +138,10 @@ class AuthService {
     if (kIsWeb) {
       return Uri.base.origin;
     }
+    // For mobile, Supabase uses PKCE flow by default.
+    // The redirect URL must be registered in Supabase Dashboard:
+    // Authentication > URL Configuration > Redirect URLs
+    // Add: com.example.mobileapp://auth
     return 'com.example.mobileapp://auth';
   }
 

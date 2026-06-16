@@ -115,32 +115,45 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1A1A1A),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
+        builder: (context, setModalState) => Container(
           padding: EdgeInsets.fromLTRB(
             24,
             24,
             24,
             MediaQuery.of(context).viewInsets.bottom + 24,
           ),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.onSurface.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
                 appState.text(en: 'Write a Review', ar: 'اكتب مراجعة'),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: scheme.onSurface,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -168,19 +181,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               const SizedBox(height: 24),
               TextField(
                 controller: _reviewTitleController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: scheme.onSurface),
                 decoration: InputDecoration(
                   labelText: appState.text(
                     en: 'Review Title',
                     ar: 'عنوان المراجعة',
                   ),
                   labelStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: scheme.onSurface.withValues(alpha: 0.5),
                   ),
+                  filled: true,
+                  fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: scheme.outlineVariant.withValues(alpha: 0.3),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -192,17 +207,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: _reviewCommentController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: scheme.onSurface),
                 maxLines: 4,
                 decoration: InputDecoration(
                   labelText: appState.text(en: 'Your Experience', ar: 'تجربتك'),
                   labelStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: scheme.onSurface.withValues(alpha: 0.5),
                   ),
+                  filled: true,
+                  fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: scheme.outlineVariant.withValues(alpha: 0.3),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -219,8 +236,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   onPressed: _isSubmittingReview
                       ? null
                       : () async {
-                          if (_userRating == 0 ||
-                              _reviewTitleController.text.trim().isEmpty) {
+                          final title = _reviewTitleController.text.trim();
+                          final comment = _reviewCommentController.text.trim();
+                          if (_userRating == 0 || title.isEmpty || comment.isEmpty) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  appState.text(
+                                    en: 'Rating, title and comment are required.',
+                                    ar: 'التقييم والعنوان والتعليق مطلوبون.',
+                                  ),
+                                ),
+                              ),
+                            );
                             return;
                           }
                           setModalState(() => _isSubmittingReview = true);
@@ -228,8 +256,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             await appState.submitProductComment(
                               productId: widget.product.id,
                               rating: _userRating,
-                              title: _reviewTitleController.text.trim(),
-                              comment: _reviewCommentController.text.trim(),
+                              title: title,
+                              comment: comment,
                             );
                             _reviewTitleController.clear();
                             _reviewCommentController.clear();

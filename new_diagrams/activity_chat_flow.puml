@@ -1,0 +1,58 @@
+@startuml activity_chat_flow
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam dpi 150
+skinparam activity {
+  BackgroundColor #E8F4FD
+  BorderColor #2E86AB
+  ArrowColor #2E86AB
+}
+
+title <size:14>VoltCart - Chat Support Activity Flow</title>
+
+|Customer|
+start
+:Open Chat;
+:Send Message;
+if (Thread Exists?) then (no)
+  :Create New Thread;
+  :Insert Initial Message;
+else (yes)
+  :Insert Message in Existing Thread;
+endif
+:Update Thread Timestamp;
+:Trigger AI Timeout (10 min);
+|#LightBlue|Sales/AI|
+
+|Customer|
+:Wait for Response;
+
+|Sales/AI|
+fork
+  :AI Timeout (10 min);
+  :Fetch Thread History;
+  :Fetch Product/Order Context;
+  :Call Gemini AI;
+  :Generate AI Reply;
+  :Insert AI Message;
+  :Update Thread (AI Active);
+  :Create/Update Chat Summary;
+fork again
+  :Sales Agent Reads Thread;
+  :Send Sales Reply;
+  :Update Thread (Sales Replied);
+  :Cancel AI Timeout;
+  :Assign Sales Agent;
+fork again
+  :Admin Reads Thread;
+  :Send Admin Reply;
+  :Update Thread (Admin Replied);
+  :Cancel AI Timeout;
+fork again
+  :Customer Sends Another Message;
+  :Reset AI Timeout (10 min);
+end fork
+
+:End Conversation;
+
+@enduml

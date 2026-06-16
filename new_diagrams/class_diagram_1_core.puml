@@ -1,0 +1,121 @@
+@startuml class_diagram_1_core
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam linetype polyline
+skinparam dpi 150
+skinparam class {
+    BorderColor #336699
+    HeaderBackgroundColor #336699
+    HeaderFontColor White
+    FontColor #333333
+}
+
+title <size:12>VoltCart - Class Diagram 1: Core Domain Entities</size>
+
+class AppUser {
+    + id: UUID
+    + email: String
+    + fullName: String
+    + role: String {retail, wholesale, admin, sales, marketing}
+    + isBlocked: Boolean
+    + preferredLanguage: String
+    + createdAt: DateTime
+    + lastSeenAt: DateTime
+    + avatarUrl: String
+    + isWholesale: Boolean
+    + isAdmin: Boolean
+    + displayName: String
+}
+
+class Product {
+    + id: UUID
+    + name: String
+    + slug: String
+    + description: String
+    + category: String {Phones, Accessories}
+    + brand: String
+    + price: Decimal
+    + discountPercent: Integer
+    + stock: Integer
+    + tags: String[]
+    + imageUrl: String
+    + isBestSeller: Boolean
+    + isFeatured: Boolean
+    + isHotDeal: Boolean
+    + createdAt: DateTime
+    + discountedPrice: Decimal
+    + isLowStock: Boolean
+    + isOutOfStock: Boolean
+}
+
+class CartEntry {
+    + id: UUID
+    + userId: UUID
+    + productId: UUID
+    + quantity: Integer
+    + createdAt: DateTime
+}
+
+class Order {
+    + id: UUID
+    + userId: UUID
+    + paymentMethod: String {COD, Market}
+    + status: String {Preparing, Shipped, On the way, Delivered}
+    + trackingCode: String
+    + subtotal: Decimal
+    + wholesaleDiscount: Decimal
+    + loyaltyDiscount: Decimal
+    + totalAmount: Decimal
+    + shippingAddress: JSON
+    + createdAt: DateTime
+}
+
+class OrderItem {
+    + id: UUID
+    + orderId: UUID
+    + productId: UUID
+    + quantity: Integer
+    + unitPrice: Decimal
+    + discountPercent: Integer
+}
+
+class Favorite {
+    + id: UUID
+    + userId: UUID
+    + productId: UUID
+    + createdAt: DateTime
+}
+
+class UserAddress {
+    + id: UUID
+    + userId: UUID
+    + label: String
+    + fullName: String
+    + phone: String
+    + city: String
+    + street: String
+    + building: String
+    + notes: String
+    + isDefault: Boolean
+    + createdAt: DateTime
+    + updatedAt: DateTime
+}
+
+' Relationships
+AppUser "1" --> "*" CartEntry : owns
+AppUser "1" --> "*" Order : places
+AppUser "1" --> "*" Favorite : favorites
+AppUser "1" --> "*" UserAddress : addresses
+AppUser "1" --> "0..1" ChatThread : has
+
+Product "1" --> "*" CartEntry : in
+Product "1" --> "*" OrderItem : in
+Product "1" --> "*" Favorite : favorited
+Product "1" --> "1" ProductRating : rated by
+
+Order "1" --> "*" OrderItem : contains
+Order "1" --> "1" UserAddress : ships to
+
+@enduml

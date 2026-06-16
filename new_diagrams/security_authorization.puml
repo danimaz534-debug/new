@@ -1,0 +1,125 @@
+@startuml security_authorization
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam dpi 150
+skinparam rectangle {
+  BorderColor #DC2626
+  BackgroundColor #FEF2F2
+}
+
+title <size:14>VoltCart - Security & Authorization Model</title>
+
+package "Authentication" {
+    [Supabase Auth\n(GoTrue)] as Auth
+    [JWT Tokens] as JWT
+    [OAuth Providers\n(Google, GitHub)] as OAuth
+}
+
+package "Authorization" {
+    [Row Level Security\n(RLS)] as RLS
+    [Service Role\nKey] as SvcRole
+    [Anon Key] as AnonKey
+}
+
+package "Roles" {
+    [Customer\n(retail/wholesale)] as Customer
+    [Sales Agent] as Sales
+    [Marketing] as Marketing
+    [Admin] as Admin
+}
+
+package "Tables & RLS Policies" {
+    rectangle "Profiles" as T1 #Pink
+    rectangle "Products" as T2 #Pink
+    rectangle "Orders" as T3 #Pink
+    rectangle "Cart Items" as T4 #Pink
+    rectangle "Favorites" as T5 #Pink
+    rectangle "Watch History" as T6 #Pink
+    rectangle "Orders" as T7 #Pink
+    rectangle "Order Items" as T8 #Pink
+    rectangle "Reviews" as T9 #Pink
+    rectangle "Notifications" as T10 #Pink
+    rectangle "Chat Threads" as T11 #Pink
+    rectangle "Chat Messages" as T12 #Pink
+    rectangle "User Addresses" as T13 #Pink
+    rectangle "Scheduled Jobs" as T14 #Pink
+}
+
+' Auth Flow
+Customer --> Auth : Sign Up / Sign In
+Auth --> JWT : Issue Access + Refresh Token
+JWT --> AnonKey : Client uses for API calls
+
+Admin --> Auth : Sign In
+Auth --> JWT : Issue Token with role claim
+JWT --> SvcRole : Edge functions use service role
+
+OAuth --> Auth : Google/GitHub Sign In
+Auth --> JWT : Link identity
+
+' RLS Policies
+RLS -.-> T1 : users see own, admins see all
+RLS -.-> T2 : public read, admin write
+RLS -.-> T3 : user sees own, admin sees all
+RLS -.-> T4 : user owns
+RLS -.-> T5 : user owns
+RLS -.-> T6 : user owns
+RLS -.-> T7 : user sees own, admin sees all
+RLS -.-> T8 : order owner/admin
+RLS -.-> T9 : user owns, public read
+RLS -.-> T10 : user owns
+RLS -.-> T11 : user owns, sales sees assigned
+RLS -.-> T12 : thread participants
+RLS -.-> T13 : user owns
+RLS -.-> T14 : service_role only
+
+' Role Permissions
+Customer --> T1 : Read/Update own
+Customer --> T2 : Read
+Customer --> T3 : Create/Read own
+Customer --> T4 : CRUD own
+Customer --> T5 : CRUD own
+Customer --> T6 : Create/Read own
+Customer --> T9 : Create/Read own
+Customer --> T10 : Read own
+Customer --> T11 : Create/Read own
+Customer --> T12 : Create/Read own
+Customer --> T13 : CRUD own
+
+Sales --> T1 : Read all
+Sales --> T3 : Read/Update status
+Sales --> T7 : Read/Update status
+Sales --> T11 : Read/Update assigned
+Sales --> T12 : Create/Read assigned
+
+Marketing --> T2 : CRUD
+Marketing --> T9 : Read/Moderate
+
+Admin --> T1 : CRUD all
+Admin --> T2 : CRUD all
+Admin --> T3 : CRUD all
+Admin --> T7 : CRUD all
+Admin --> T9 : CRUD all
+Admin --> T14 : Full access
+
+SvcRole --> T14 : Full access (Edge Functions)
+
+note right of JWT
+  Access Token: 1 hour expiry
+  Refresh Token: 7 days (rotating)
+  Claims: user_id, role, email
+end note
+
+note right of RLS
+  Enforced at PostgreSQL level
+  Policies use auth.uid() function
+  No client-side bypass possible
+end note
+
+note bottom of Auth
+  Session: 30min inactivity timeout
+  Browser close = session destroyed
+  persistSession: false (cookies only)
+end note
+
+@enduml

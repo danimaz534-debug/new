@@ -16,7 +16,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
-  bool _isRegister = false;
+  bool _isRegister = true;
   bool _oauthLoading = false;
   bool _obscurePassword = true;
   String? _oauthProvider;
@@ -234,6 +234,12 @@ class _AuthScreenState extends State<AuthScreen> {
                                       ar: 'الاسم الكامل مطلوب.',
                                     );
                                   }
+                                  if (_isRegister && v != null && !RegExp(r'^[A-Za-z\u0600-\u06FF]').hasMatch(v.trim())) {
+                                    return appState.text(
+                                      en: 'Full name must start with a letter.',
+                                      ar: 'الاسم الكامل يجب أن يبدأ بحرف.',
+                                    );
+                                  }
                                   return null;
                                 },
                                 ),
@@ -249,6 +255,13 @@ class _AuthScreenState extends State<AuthScreen> {
                                     return appState.text(
                                       en: 'Email address is required.',
                                       ar: 'البريد الإلكتروني مطلوب.',
+                                    );
+                                  }
+                                  final emailPrefix = v.trim().split('@').first;
+                                  if (!RegExp(r'^[A-Za-z]').hasMatch(emailPrefix)) {
+                                    return appState.text(
+                                      en: 'Email must start with a letter.',
+                                      ar: 'البريد الإلكتروني يجب أن يبدأ بحرف.',
                                     );
                                   }
                                   if (!v.contains('@') || !v.contains('.')) {

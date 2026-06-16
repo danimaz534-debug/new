@@ -22,6 +22,7 @@ class NetworkProductImage extends StatelessWidget {
         : CachedNetworkImage(
             imageUrl: imageUrl!,
             height: height,
+            width: double.infinity,
             fit: fit,
             placeholder: (context, url) => _fallback(),
             errorWidget: (context, url, error) => _fallback(),

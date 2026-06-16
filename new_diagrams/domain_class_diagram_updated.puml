@@ -1,0 +1,256 @@
+@startuml domain_class_diagram_updated
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam linetype polyline
+skinparam dpi 150
+skinparam class {
+  BorderColor #336699
+  HeaderBackgroundColor #336699
+  HeaderFontColor White
+  FontColor #333333
+}
+
+title <size:12>VoltCart - Domain Model Class Diagram</size>
+
+class AppUser {
+  id: UUID
+  email: String
+  full_name: String?
+  role: String {retail|wholesale|admin|sales|marketing}
+  is_blocked: Boolean
+  preferred_language: String
+  created_at: DateTime
+  last_seen_at: DateTime
+  avatar_url: String?
+  deleted_at: DateTime?
+}
+
+class Product {
+  id: UUID
+  name: String
+  slug: String
+  description: String?
+  category: String {Phones|Accessories}
+  brand: String
+  price: Decimal
+  discount_percent: Integer
+  stock: Integer
+  tags: String[]
+  image_url: String?
+  is_best_seller: Boolean
+  is_featured: Boolean
+  is_hot_deal: Boolean
+  created_at: DateTime
+}
+
+class CartEntry {
+  id: UUID
+  user_id: UUID
+  product_id: UUID
+  quantity: Integer
+  created_at: DateTime
+}
+
+class Order {
+  id: UUID
+  user_id: UUID
+  payment_method: String {COD|Market}
+  status: String {Preparing|Shipped|On the way|Delivered}
+  tracking_code: String
+  subtotal: Decimal
+  wholesale_discount: Decimal
+  loyalty_discount: Decimal
+  total_amount: Decimal
+  shipping_address: JSON
+  created_at: DateTime
+}
+
+class OrderItem {
+  id: UUID
+  order_id: UUID
+  product_id: UUID
+  quantity: Integer
+  unit_price: Decimal
+  discount_percent: Integer
+}
+
+class Favorite {
+  id: UUID
+  user_id: UUID
+  product_id: UUID
+  created_at: DateTime
+}
+
+class WatchHistory {
+  id: UUID
+  user_id: UUID
+  product_id: UUID
+  viewed_at: DateTime
+}
+
+class UserAddress {
+  id: UUID
+  user_id: UUID
+  label: String
+  full_name: String
+  phone: String
+  city: String
+  street: String
+  building: String
+  notes: String?
+  is_default: Boolean
+  created_at: DateTime
+  updated_at: DateTime
+}
+
+class ChatThread {
+  id: UUID
+  user_id: UUID
+  assigned_sales_id: UUID?
+  last_sales_reply_at: DateTime?
+  created_at: DateTime
+  ai_mode_active: Boolean
+  awaiting_admin_response: Boolean
+  pending_ai_job_id: UUID?
+  last_user_message_at: DateTime?
+  last_admin_message_at: DateTime?
+  last_ai_message_at: DateTime?
+}
+
+class ChatMessage {
+  id: UUID
+  thread_id: UUID
+  sender_id: UUID?
+  sender_type: String {user|sales|ai|admin}
+  message: String
+  created_at: DateTime
+}
+
+class ChatSummary {
+  id: UUID
+  thread_id: UUID
+  user_id: UUID
+  issue_description: String
+  resolution_status: String {Pending|Resolved}
+  resolved_by: UUID?
+  created_at: DateTime
+  updated_at: DateTime
+}
+
+class ProductComment {
+  id: UUID
+  user_id: UUID
+  product_id: UUID
+  rating: Integer {1..5}
+  title: String
+  comment: String?
+  is_verified_purchase: Boolean
+  helpful_count: Integer
+  created_at: DateTime
+  updated_at: DateTime
+  is_verified: Boolean
+}
+
+class ProductRating {
+  id: UUID
+  product_id: UUID
+  average_rating: Decimal
+  total_reviews: Integer
+  rating_1_count: Integer
+  rating_2_count: Integer
+  rating_3_count: Integer
+  rating_4_count: Integer
+  rating_5_count: Integer
+  updated_at: DateTime
+}
+
+class Notification {
+  id: UUID
+  user_id: UUID
+  title: String
+  body: String
+  type: String
+  is_read: Boolean
+  created_at: DateTime
+}
+
+class UserAddress {
+  id: UUID
+  user_id: UUID
+  label: String
+  full_name: String
+  phone: String
+  city: String
+  street: String
+  building: String
+  notes: String?
+  is_default: Boolean
+  created_at: DateTime
+  updated_at: DateTime
+}
+
+class WholesaleCode {
+  id: UUID
+  code: String
+  created_by: UUID?
+  redeemed_by: UUID?
+  redeemed_at: DateTime?
+  is_used: Boolean
+  created_at: DateTime
+}
+
+class ScheduledJob {
+  id: UUID
+  job_type: String
+  thread_id: UUID
+  scheduled_at: DateTime
+  status: String {pending|processing|completed|cancelled|failed}
+  attempts: Integer
+  max_attempts: Integer
+  error_message: String?
+  created_at: DateTime
+  processed_at: DateTime?
+}
+
+class Review {
+  id: UUID
+  user_id: UUID
+  product_id: UUID
+  rating: Integer {1..5}
+  comment: String?
+  created_at: DateTime
+}
+
+' Relationships
+AppUser "1" --> "*" CartEntry : user_id
+AppUser "1" --> "*" Order : user_id
+AppUser "1" --> "*" Favorite : user_id
+AppUser "1" --> "*" WatchHistory : user_id
+AppUser "1" --> "*" Review : user_id
+AppUser "1" --> "*" ProductComment : user_id
+AppUser "1" --> "*" Notification : user_id
+AppUser "1" --> "*" ChatThread : user_id
+AppUser "1" --> "*" ChatSummary : user_id
+AppUser "1" --> "*" UserAddress : user_id
+AppUser "1" --> "*" WholesaleCode : created_by
+AppUser "1" --> "*" WholesaleCode : redeemed_by
+AppUser "1" --> "0..1" ChatThread : assigned_sales_id
+
+Product "1" --> "*" CartEntry : product_id
+Product "1" --> "*" OrderItem : product_id
+Product "1" --> "*" Favorite : product_id
+Product "1" --> "*" WatchHistory : product_id
+Product "1" --> "*" Review : product_id
+Product "1" --> "*" ProductComment : product_id
+Product "1" --> "1" ProductRating : product_id
+
+Order "1" --> "*" OrderItem : order_id
+
+ChatThread "1" --> "*" ChatMessage : thread_id
+ChatThread "1" --> "0..1" ChatSummary : thread_id
+ChatThread "1" --> "*" ScheduledJob : thread_id
+ChatThread "1" --> "0..1" AppUser : assigned_sales_id
+
+@enduml

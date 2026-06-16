@@ -605,14 +605,70 @@ class _AddEditAddressModalState extends State<_AddEditAddressModal> {
     );
   }
 
+  bool _startsWithLetter(String value) {
+    return value.trim().isNotEmpty && RegExp(r'^[A-Za-z\u0600-\u06FF]').hasMatch(value.trim());
+  }
+
+  bool _isOnlyNumbers(String value) {
+    return value.trim().isNotEmpty && RegExp(r'^\d+$').hasMatch(value.trim());
+  }
+
   Future<void> _save() async {
-    if (cityCtrl.text.isEmpty || streetCtrl.text.isEmpty) {
+    final fullName = fullNameCtrl.text.trim();
+    final phone = phoneCtrl.text.trim();
+    final city = cityCtrl.text.trim();
+    final street = streetCtrl.text.trim();
+    final building = buildingCtrl.text.trim();
+
+    if (fullName.isEmpty || phone.isEmpty || city.isEmpty || street.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             widget.appState.text(
-              en: 'City and street are required',
-              ar: 'المدينة والشارع مطلوبان',
+              en: 'All fields are required.',
+              ar: 'جميع الحقول مطلوبة.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!_isOnlyNumbers(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.appState.text(
+              en: 'Phone number must contain only digits.',
+              ar: 'رقم الهاتف يجب أن يحتوي على أرقام فقط.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!_startsWithLetter(fullName)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.appState.text(
+              en: 'Full name must start with a letter.',
+              ar: 'الاسم الكامل يجب أن يبدأ بحرف.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!_startsWithLetter(city)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.appState.text(
+              en: 'City must start with a letter.',
+              ar: 'المدينة يجب أن تبدأ بحرف.',
             ),
           ),
         ),
@@ -626,11 +682,11 @@ class _AddEditAddressModalState extends State<_AddEditAddressModal> {
         await widget.appState.createAddress(
           UserAddress(
             id: '',
-            fullName: fullNameCtrl.text.trim(),
-            phone: phoneCtrl.text.trim(),
-            city: cityCtrl.text.trim(),
-            street: streetCtrl.text.trim(),
-            building: buildingCtrl.text.trim(),
+            fullName: fullName,
+            phone: phone,
+            city: city,
+            street: street,
+            building: building,
             notes: null,
             isDefault: isDefault,
             createdAt: DateTime.now(),
@@ -639,11 +695,11 @@ class _AddEditAddressModalState extends State<_AddEditAddressModal> {
       } else {
         await widget.appState.updateAddress(
           widget.existing!.copyWith(
-            fullName: fullNameCtrl.text.trim(),
-            phone: phoneCtrl.text.trim(),
-            city: cityCtrl.text.trim(),
-            street: streetCtrl.text.trim(),
-            building: buildingCtrl.text.trim(),
+            fullName: fullName,
+            phone: phone,
+            city: city,
+            street: street,
+            building: building,
             isDefault: isDefault,
           ),
         );

@@ -622,7 +622,6 @@ class AppStateProvider extends ChangeNotifier {
         loadFavorites(),
         loadOrders(),
         loadNotifications(),
-        _loadWatchHistory(),
       ]);
     }
   }
@@ -697,7 +696,7 @@ class AppStateProvider extends ChangeNotifier {
     if (user == null) {
       _profile = null;
       _cartItems = [];
-      _favoriteIds = <String = <String>{};
+      _favoriteIds = <String>{};
       _favoriteCounts = {};
       _orders = [];
       _notifications = [];
@@ -725,7 +724,6 @@ class AppStateProvider extends ChangeNotifier {
         loadFavorites(),
         loadOrders(),
         loadNotifications(),
-        _loadWatchHistory(),
       ]);
     } catch (error) {
       _lastError = error.toString();

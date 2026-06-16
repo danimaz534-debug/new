@@ -1,0 +1,111 @@
+@startuml class_diagram_3_admin
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam linetype polyline
+skinparam dpi 150
+skinparam class {
+    BorderColor #22C55E
+    HeaderBackgroundColor #22C55E
+    HeaderFontColor White
+    FontColor #333333
+}
+
+title <size:12>VoltCart - Class Diagram 3: Admin, Reviews & System Entities</size>
+
+class Review {
+    + id: UUID
+    + userId: UUID
+    + productId: UUID
+    + rating: Integer {1..5}
+    + comment: String
+    + createdAt: DateTime
+}
+
+class ProductComment {
+    + id: UUID
+    + userId: UUID
+    + productId: UUID
+    + rating: Integer {1..5}
+    + title: String
+    + comment: String
+    + isVerifiedPurchase: Boolean
+    + helpfulCount: Integer
+    + createdAt: DateTime
+    + updatedAt: DateTime
+    + isVerified: Boolean
+}
+
+class ProductRating {
+    + id: UUID
+    + productId: UUID
+    + averageRating: Decimal
+    + totalReviews: Integer
+    + rating1Count: Integer
+    + rating2Count: Integer
+    + rating3Count: Integer
+    + rating4Count: Integer
+    + rating5Count: Integer
+    + updatedAt: DateTime
+}
+
+class Notification {
+    + id: UUID
+    + userId: UUID
+    + title: String
+    + body: String
+    + type: String
+    + isRead: Boolean
+    + createdAt: DateTime
+}
+
+class WholesaleCode {
+    + id: UUID
+    + code: String
+    + createdBy: UUID
+    + redeemedBy: UUID
+    + redeemedAt: DateTime
+    + isUsed: Boolean
+    + createdAt: DateTime
+}
+
+class AppUser {
+    + id: UUID
+    + email: String
+    + fullName: String
+    + role: String {retail, wholesale, admin, sales, marketing}
+    + isBlocked: Boolean
+    + preferredLanguage: String
+    + createdAt: DateTime
+    + lastSeenAt: DateTime
+    + avatarUrl: String
+}
+
+class Product {
+    + id: UUID
+    + name: String
+    + category: String
+    + brand: String
+    + price: Decimal
+    + stock: Integer
+    + imageUrl: String
+}
+
+' Relationships
+Review "1" --> "1" AppUser : by
+Review "1" --> "1" Product : for
+
+ProductComment "1" --> "1" AppUser : by
+ProductComment "1" --> "1" Product : for
+
+ProductRating "1" --> "1" Product : aggregates
+
+Notification "1" --> "1" AppUser : to
+
+WholesaleCode "1" --> "1" AppUser : createdBy
+WholesaleCode "1" --> "0..1" AppUser : redeemedBy
+
+Product "1" --> "0..1" ProductRating : has
+
+@enduml

@@ -1,0 +1,74 @@
+@startuml state_order_processing
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam dpi 150
+skinparam state {
+  BackgroundColor #E8F4FD
+  BorderColor #2E86AB
+  ArrowColor #2E86AB
+}
+
+title <size:14>VoltCart - Order Processing State Machine</title>
+
+[*] --> CartEmpty
+
+state "Cart Management" as CartMgmt {
+    CartEmpty --> CartHasItems : Add Item
+    CartHasItems --> CartEmpty : Clear Cart / Checkout
+    CartHasItems --> CartHasItems : Update Quantity / Remove Item
+}
+
+state "Checkout Process" as Checkout {
+    CartEmpty --> AddressSelection : Proceed to Checkout
+    AddressSelection --> PaymentSelection : Select Address
+    PaymentSelection --> OrderConfirmation : Select Payment Method
+    OrderConfirmation --> Processing : Confirm Order
+}
+
+state "Order Fulfillment" as Fulfillment {
+    Processing --> Preparing : Order Placed
+    Preparing --> Shipped : Packed & Dispatched
+    Shipped --> OnTheWay : In Transit
+    OnTheWay --> Delivered : Delivered to Customer
+    Delivered --> [*]
+}
+
+state "Cancellation/Return" as Cancel {
+    Processing --> Cancelled : Customer/Admin Cancel
+    Preparing --> Cancelled : Customer/Admin Cancel
+    Shipped --> Returned : Customer Return
+    OnTheWay --> Returned : Customer Return
+    Cancelled --> [*]
+    Returned --> Refunded : Process Refund
+    Refunded --> [*]
+}
+
+' Events
+CartMgmt -[#red]-> Fulfillment : Place Order
+Fulfillment -[#red]-> Cancel : Cancel/Return
+
+note right of Preparing
+  - Payment confirmed
+  - Inventory reserved
+  - Notification sent
+end note
+
+note right of Shipped
+  - Tracking code generated
+  - Carrier assigned
+  - Customer notified
+end note
+
+note right of Delivered
+  - Signature/OTP verified
+  - Order completed
+  - Loyalty points awarded
+end note
+
+note right of Cancelled
+  - Inventory released
+  - Payment refunded
+  - Reason recorded
+end note
+
+@enduml

@@ -1,0 +1,41 @@
+@startuml dfd_level_0_updated
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam dpi 150
+left to right direction
+
+title <size:12>VoltCart - Context Diagram (Level 0)</size>
+
+rectangle "0\nVoltCart\nSystem" as system #LightBlue
+
+actor Customer as customer
+actor Staff as staff
+
+database Auth as auth
+database Storage as storage
+database AI as ai
+database Payment as payment
+database Email as email
+
+customer --> system : Credentials, Search, Cart, Chat, Reviews, Profile
+system --> customer : Auth, Products, Orders, Chat, Notifications, Discounts
+
+staff --> system : Login, Manage Products/Orders/Users, Chat, Analytics
+system --> staff : Dashboard, Order/Product/User Data, Threads, Logs
+
+system --> auth : Verify / Create / Reset
+auth --> system : Tokens / Sessions
+
+system --> storage : Upload / Retrieve Images
+storage --> system : Public Image URLs
+
+system --> ai : Chat Context + Inventory
+ai --> system : AI-Generated Reply
+
+system --> payment : Process Payment
+payment --> system : Confirmation
+
+system --> email : Send Notifications
+
+@enduml

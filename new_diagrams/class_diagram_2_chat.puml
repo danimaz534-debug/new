@@ -1,0 +1,92 @@
+@startuml class_diagram_2_chat
+skinparam classAttributeIconSize 0
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam shadowing false
+skinparam linetype polyline
+skinparam dpi 150
+skinparam class {
+    BorderColor #8B5CF6
+    HeaderBackgroundColor #8B5CF6
+    HeaderFontColor White
+    FontColor #333333
+}
+
+title <size:12>VoltCart - Class Diagram 2: Chat & Support Entities</size>
+
+class ChatThread {
+    + id: UUID
+    + userId: UUID
+    + assignedSalesId: UUID
+    + lastSalesReplyAt: DateTime
+    + createdAt: DateTime
+    + aiModeActive: Boolean
+    + awaitingAdminResponse: Boolean
+    + pendingAiJobId: UUID
+    + lastUserMessageAt: DateTime
+    + lastAdminMessageAt: DateTime
+    + lastAiMessageAt: DateTime
+}
+
+class ChatMessage {
+    + id: UUID
+    + threadId: UUID
+    + senderId: UUID
+    + senderType: String {user, sales, ai, admin}
+    + message: String
+    + createdAt: DateTime
+}
+
+class ChatSummary {
+    + id: UUID
+    + threadId: UUID
+    + userId: UUID
+    + issueDescription: String
+    + resolutionStatus: String {Pending, Resolved}
+    + resolvedBy: UUID
+    + createdAt: DateTime
+    + updatedAt: DateTime
+}
+
+class ScheduledJob {
+    + id: UUID
+    + jobType: String
+    + threadId: UUID
+    + scheduledAt: DateTime
+    + status: String {pending, processing, completed, cancelled, failed}
+    + attempts: Integer
+    + maxAttempts: Integer
+    + errorMessage: String
+    + createdAt: DateTime
+    + processedAt: DateTime
+}
+
+class AppUser {
+    + id: UUID
+    + email: String
+    + fullName: String
+    + role: String
+    + isBlocked: Boolean
+    + preferredLanguage: String
+    + createdAt: DateTime
+    + lastSeenAt: DateTime
+    + avatarUrl: String
+}
+
+' Relationships
+ChatThread "1" --> "1" AppUser : user
+ChatThread "1" --> "0..1" AppUser : assignedSales
+ChatThread "1" --> "*" ChatMessage : contains
+ChatThread "1" --> "0..1" ChatSummary : has
+ChatThread "1" --> "*" ScheduledJob : schedules
+
+ChatMessage "*" --> "1" ChatThread : belongs to
+ChatMessage "*" --> "0..1" AppUser : sent by
+
+ChatSummary "1" --> "1" ChatThread : summarizes
+ChatSummary "1" --> "1" AppUser : user
+ChatSummary "1" --> "0..1" AppUser : resolvedBy
+
+ScheduledJob "*" --> "1" ChatThread : for
+
+@enduml
